@@ -4,983 +4,772 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Matriz de Imóveis — Lisboa</title>
-
-<!-- Google Fonts: elegant serif + clean geometric -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-
 <style>
-/* ─────────────────────────────────────────────
-   CSS VARIABLES & RESET
-───────────────────────────────────────────── */
 :root {
-  --bg:        #f4f1ec;
-  --surface:   #ffffff;
-  --border:    #ddd8ce;
-  --text:      #1c1917;
-  --muted:     #78716c;
-  --gold:      #b8975a;
-  --gold-lt:   #f0e4cc;
-  --gold-dk:   #8a6e3a;
-  --green:     #4a7c59;
-  --red:       #c0392b;
-  --shadow:    0 2px 12px rgba(0,0,0,0.08);
-  --radius:    10px;
-  --tab-h:     44px;
+  --bg:#f4f1ec; --surface:#fff; --border:#ddd8ce; --text:#1c1917; --muted:#78716c;
+  --gold:#b8975a; --gold-lt:#f0e4cc; --gold-dk:#8a6e3a;
+  --green:#4a7c59; --green-lt:#d1fae5;
+  --red:#c0392b; --red-lt:#fdf0ee;
+  --blue:#1e40af; --blue-lt:#dbeafe;
+  --shadow:0 2px 14px rgba(0,0,0,.07); --radius:12px;
 }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* HEADER */
+header{background:var(--text);color:#fff;padding:20px 32px 16px;display:flex;align-items:baseline;gap:16px;border-bottom:3px solid var(--gold)}
+header h1{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700}
+header span{font-size:.76rem;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;font-weight:500}
 
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  padding: 0;
-}
+/* TABS */
+.tabs-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 28px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-btn{height:44px;padding:0 18px;font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:500;letter-spacing:.03em;cursor:pointer;background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);transition:color .15s,border-color .15s;position:relative;top:1px;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--gold-dk);border-bottom-color:var(--gold);font-weight:600}
 
-/* ─────────────────────────────────────────────
-   HEADER
-───────────────────────────────────────────── */
-header {
-  background: var(--text);
-  color: #fff;
-  padding: 22px 32px 18px;
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  border-bottom: 3px solid var(--gold);
-}
+/* MAIN */
+main{max-width:1200px;margin:0 auto;padding:26px 22px 70px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.section-heading{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;margin-bottom:5px}
+.section-sub{font-size:.82rem;color:var(--muted);margin-bottom:20px;line-height:1.55}
 
-header h1 {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.55rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: #fff;
-}
+/* BUTTONS */
+.btn-primary{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:var(--gold);color:#fff;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;letter-spacing:.02em}
+.btn-primary:hover{background:var(--gold-dk)}.btn-primary:active{transform:scale(.97)}.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:transparent;color:var(--text);border:1.5px solid var(--border);border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold-dk);background:var(--gold-lt)}
 
-header span {
-  font-size: 0.78rem;
-  color: var(--gold);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 500;
-}
+/* MATRIZ */
+.matrix-toolbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.properties-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:18px}
+.prop-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px 16px 14px;display:flex;flex-direction:column;gap:13px;animation:fadeIn .2s ease;transition:box-shadow .15s}
+.prop-card:hover{box-shadow:0 5px 22px rgba(0,0,0,.11)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card-header{display:flex;align-items:center;gap:8px}
+.prop-name-input{flex:1;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;border:none;border-bottom:2px solid var(--border);background:transparent;color:var(--text);padding:2px 0 4px;outline:none;transition:border-color .15s}
+.prop-name-input:focus{border-bottom-color:var(--gold)}
+.prop-name-input::placeholder{color:#bbb;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:400}
+.btn-remove{background:none;border:none;cursor:pointer;color:#bbb;font-size:1.05rem;line-height:1;padding:2px 5px;border-radius:5px;transition:color .13s,background .13s}
+.btn-remove:hover{color:var(--red);background:var(--red-lt)}
+.score-area{display:flex;align-items:center;gap:10px}
+.score-bar-wrap{flex:1;height:7px;background:#eee;border-radius:99px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold-dk));transition:width .4s ease}
+.score-badge{font-size:.77rem;font-weight:700;color:var(--gold-dk);min-width:36px;text-align:right}
+.grp-divider{border-top:1px solid #f0ece5;padding-top:10px}
+.grp-label{font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dk);margin-bottom:8px}
+.criteria-section{display:flex;flex-direction:column;gap:11px}
+.criterion-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.options-row{display:flex;flex-wrap:wrap;gap:4px}
+.opt-btn{padding:3px 9px;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;border:1.5px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;transition:all .12s;white-space:nowrap}
+.opt-btn:hover{border-color:var(--gold);color:var(--gold-dk);background:var(--gold-lt)}
+.opt-btn.selected{background:var(--text);color:#fff;border-color:var(--text);font-weight:600}
+.card-footer{display:flex;align-items:center;justify-content:space-between}
+.card-reset{font-size:.71rem;color:var(--muted);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;transition:color .12s}
+.card-reset:hover{color:var(--red)}
+.aru-pill{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.05em;text-transform:uppercase}
+.aru-pill.yes{background:var(--green-lt);color:var(--green)}.aru-pill.no{background:#f3f4f6;color:#9ca3af}.aru-pill.unknown{background:var(--gold-lt);color:var(--gold-dk)}
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state .ei{font-size:2.5rem;margin-bottom:12px}.empty-state p{font-size:.88rem}
 
-/* ─────────────────────────────────────────────
-   TABS
-───────────────────────────────────────────── */
-.tabs-bar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  padding: 0 32px;
-  gap: 0;
-}
+/* PESOS */
+.weights-panel{max-width:560px}
+.weights-panel .intro{font-size:.83rem;color:var(--muted);margin-bottom:22px;line-height:1.6}
+.weights-group-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dk);margin:18px 0 8px;border-left:3px solid var(--gold);padding-left:8px}
+.weight-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:9px;box-shadow:var(--shadow)}
+.weight-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.weight-name{font-size:.88rem;font-weight:600}
+.weight-value-badge{background:var(--gold-lt);color:var(--gold-dk);font-weight:700;font-size:.8rem;padding:2px 10px;border-radius:99px;min-width:32px;text-align:center}
+.weight-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;background:#e8e2d8;outline:none;cursor:pointer}
+.weight-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.weight-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid #fff}
+.weight-opts-info{font-size:.72rem;color:var(--muted);margin-top:5px;font-style:italic}
 
-.tab-btn {
-  height: var(--tab-h);
-  padding: 0 22px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: var(--muted);
-  transition: color 0.18s, border-color 0.18s;
-  position: relative;
-  top: 1px;
-}
+/* ARU */
+.aru-intro-bar{background:var(--text);color:#fff;border-radius:var(--radius);padding:16px 20px;margin-bottom:22px;display:flex;align-items:flex-start;gap:14px}
+.aru-intro-bar .ai-icon{font-size:1.6rem;flex-shrink:0;margin-top:2px}
+.aru-intro-bar p{font-size:.83rem;line-height:1.6;color:#d1cdc7}
+.aru-intro-bar a{color:var(--gold);font-weight:600;text-decoration:underline}
+.aru-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.aru-prop-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 16px;display:flex;flex-direction:column;gap:12px}
+.aru-prop-name{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700}
+.aru-toggle-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.aru-toggle-btn{padding:4px 11px;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:600;border:1.5px solid var(--border);border-radius:99px;background:transparent;cursor:pointer;transition:all .12s}
+.aru-toggle-btn:hover{border-color:var(--gold)}
+.aru-toggle-btn.sel-yes{background:var(--green-lt);color:var(--green);border-color:var(--green)}
+.aru-toggle-btn.sel-no{background:var(--red-lt);color:var(--red);border-color:var(--red)}
+.aru-toggle-btn.sel-unknown{background:var(--gold-lt);color:var(--gold-dk);border-color:var(--gold)}
+.aru-field-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.aru-morada-input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--text);outline:none;transition:border-color .15s}
+.aru-morada-input:focus{border-color:var(--gold)}
+.aru-morada-input::placeholder{color:#bbb}
+.aru-benefits-title{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.aru-benefit-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px;cursor:pointer}
+.aru-benefit-item input[type=checkbox]{margin-top:1px;flex-shrink:0;accent-color:var(--green);width:14px;height:14px;cursor:pointer}
+.aru-benefit-item label{font-size:.78rem;color:var(--text);line-height:1.45;cursor:pointer}
+.aru-benefit-item.checked label{color:var(--muted);text-decoration:line-through}
+.aru-note-input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.8rem;color:var(--text);outline:none;resize:vertical;min-height:54px;transition:border-color .15s}
+.aru-note-input:focus{border-color:var(--gold)}
+.aru-note-input::placeholder{color:#bbb}
 
-.tab-btn:hover { color: var(--text); }
-.tab-btn.active {
-  color: var(--gold-dk);
-  border-bottom-color: var(--gold);
-  font-weight: 600;
-}
+/* CHECKLISTS */
+.chk-toolbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.chk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+.chk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.chk-card-header{background:var(--text);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.chk-card-title{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700}
+.chk-progress{font-size:.72rem;font-weight:700;background:rgba(255,255,255,.15);padding:2px 9px;border-radius:99px;color:#fff;letter-spacing:.04em}
+.chk-section{border-bottom:1px solid var(--border)}.chk-section:last-child{border-bottom:none}
+.chk-section-title{font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-dk);padding:9px 14px 4px;background:var(--gold-lt)}
+.chk-item{display:flex;align-items:flex-start;gap:9px;padding:7px 14px;border-bottom:1px solid #f3f0eb;cursor:pointer;transition:background .1s}
+.chk-item:hover{background:#fafaf8}.chk-item:last-child{border-bottom:none}
+.chk-item input[type=checkbox]{margin-top:2px;flex-shrink:0;accent-color:var(--green);width:14px;height:14px;cursor:pointer}
+.chk-item label{font-size:.79rem;color:var(--text);line-height:1.45;cursor:pointer}
+.chk-item.done label{color:var(--muted);text-decoration:line-through}
+.chk-reset-btn{display:block;width:100%;padding:9px;font-size:.75rem;font-weight:500;color:var(--muted);background:none;border:none;border-top:1px solid var(--border);cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .13s,background .13s;text-align:center}
+.chk-reset-btn:hover{color:var(--red);background:var(--red-lt)}
 
-/* ─────────────────────────────────────────────
-   MAIN CONTENT AREA
-───────────────────────────────────────────── */
-main {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 28px 24px 60px;
-}
+/* PRÉ-1951 */
+.pre51-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 18px;box-shadow:var(--shadow)}
+.info-card.highlight{border-left:4px solid var(--gold);background:#fffef9}
+.info-card .ic-icon{font-size:1.5rem;margin-bottom:8px}
+.info-card h3{font-family:'Playfair Display',serif;font-size:.98rem;font-weight:700;margin-bottom:7px}
+.info-card p,.info-card li{font-size:.81rem;color:var(--muted);line-height:1.65}
+.info-card ul{padding-left:15px;margin-top:5px}.info-card li{margin-bottom:3px}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.68rem;font-weight:700;letter-spacing:.06em;margin-bottom:8px;text-transform:uppercase}
+.tag.warning{background:#fef3c7;color:#92400e}.tag.info{background:var(--blue-lt);color:var(--blue)}.tag.gold{background:var(--gold-lt);color:var(--gold-dk)}.tag.green{background:var(--green-lt);color:var(--green)}
 
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
-/* ─────────────────────────────────────────────
-   MATRIZ TAB
-───────────────────────────────────────────── */
-
-/* Toolbar above the cards */
-.matrix-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.matrix-toolbar p {
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.btn-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 18px;
-  background: var(--gold);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.84rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  letter-spacing: 0.02em;
-}
-.btn-add:hover { background: var(--gold-dk); }
-.btn-add:active { transform: scale(0.97); }
-.btn-add:disabled { opacity: 0.45; cursor: not-allowed; }
-
-/* Property cards grid */
-.properties-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 18px;
-}
-
-/* Single property card */
-.prop-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow);
-  padding: 20px 18px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  position: relative;
-  animation: fadeIn 0.22s ease;
-  transition: box-shadow 0.15s;
-}
-.prop-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Card header: name input + remove btn */
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.prop-name-input {
-  flex: 1;
-  font-family: 'Playfair Display', serif;
-  font-size: 1rem;
-  font-weight: 700;
-  border: none;
-  border-bottom: 2px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  padding: 2px 0 4px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.prop-name-input:focus { border-bottom-color: var(--gold); }
-.prop-name-input::placeholder { color: #c0b9b0; font-weight: 400; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
-
-.btn-remove {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #bbb;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
-}
-.btn-remove:hover { color: var(--red); background: #fdf0ee; }
-
-/* Score badge */
-.score-area {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.score-bar-wrap {
-  flex: 1;
-  height: 6px;
-  background: #eee;
-  border-radius: 99px;
-  overflow: hidden;
-}
-.score-bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--gold), var(--gold-dk));
-  transition: width 0.4s ease;
-}
-
-.score-badge {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--gold-dk);
-  min-width: 38px;
-  text-align: right;
-  letter-spacing: 0.02em;
-}
-
-/* Criteria section inside card */
-.criteria-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.criterion-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 5px;
-}
-
-/* Option pill buttons */
-.options-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.opt-btn {
-  padding: 4px 10px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.14s;
-  white-space: nowrap;
-}
-.opt-btn:hover {
-  border-color: var(--gold);
-  color: var(--gold-dk);
-  background: var(--gold-lt);
-}
-.opt-btn.selected {
-  background: var(--text);
-  color: #fff;
-  border-color: var(--text);
-  font-weight: 600;
-}
-
-/* Card reset link */
-.card-reset {
-  font-size: 0.73rem;
-  color: var(--muted);
-  text-decoration: underline;
-  cursor: pointer;
-  background: none;
-  border: none;
-  font-family: 'DM Sans', sans-serif;
-  padding: 0;
-  text-align: left;
-  transition: color 0.12s;
-}
-.card-reset:hover { color: var(--red); }
-
-/* Empty state */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--muted);
-}
-.empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
-.empty-state p { font-size: 0.9rem; }
-
-/* ─────────────────────────────────────────────
-   PESOS TAB
-───────────────────────────────────────────── */
-.weights-panel {
-  max-width: 520px;
-}
-
-.weights-panel h2 {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.2rem;
-  margin-bottom: 6px;
-}
-.weights-panel .intro {
-  font-size: 0.84rem;
-  color: var(--muted);
-  margin-bottom: 24px;
-  line-height: 1.6;
-}
-
-.weight-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow);
-}
-
-.weight-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.weight-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.weight-value-badge {
-  background: var(--gold-lt);
-  color: var(--gold-dk);
-  font-weight: 700;
-  font-size: 0.82rem;
-  padding: 2px 10px;
-  border-radius: 99px;
-  min-width: 36px;
-  text-align: center;
-}
-
-.weight-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 6px;
-  border-radius: 99px;
-  background: #e8e2d8;
-  outline: none;
-  cursor: pointer;
-}
-.weight-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--gold);
-  cursor: pointer;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  transition: background 0.15s;
-}
-.weight-slider::-webkit-slider-thumb:hover { background: var(--gold-dk); }
-.weight-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--gold);
-  cursor: pointer;
-  border: 2px solid #fff;
-}
-
-.weight-options-info {
-  font-size: 0.74rem;
-  color: var(--muted);
-  margin-top: 6px;
-  font-style: italic;
-}
-
-.btn-reset-weights {
-  margin-top: 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 20px;
-  background: transparent;
-  color: var(--text);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.84rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.btn-reset-weights:hover {
-  border-color: var(--gold);
-  color: var(--gold-dk);
-  background: var(--gold-lt);
-}
-
-/* ─────────────────────────────────────────────
-   PRÉ-1951 TAB
-───────────────────────────────────────────── */
-.pre1951-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 18px;
-  margin-top: 4px;
-}
-
-.info-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 22px 20px;
-  box-shadow: var(--shadow);
-}
-
-.info-card .ic-icon {
-  font-size: 1.6rem;
-  margin-bottom: 10px;
-}
-
-.info-card h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--text);
-}
-
-.info-card p, .info-card li {
-  font-size: 0.83rem;
-  color: var(--muted);
-  line-height: 1.65;
-}
-
-.info-card ul {
-  padding-left: 16px;
-  margin-top: 6px;
-}
-
-.info-card li { margin-bottom: 4px; }
-
-.info-card.highlight {
-  border-left: 4px solid var(--gold);
-  background: #fffef9;
-}
-
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 99px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  margin-bottom: 10px;
-  text-transform: uppercase;
-}
-.tag.warning { background: #fef3c7; color: #92400e; }
-.tag.info    { background: #dbeafe; color: #1e40af; }
-.tag.gold    { background: var(--gold-lt); color: var(--gold-dk); }
-.tag.green   { background: #d1fae5; color: #065f46; }
-
-/* ─────────────────────────────────────────────
-   SECTION HEADINGS
-───────────────────────────────────────────── */
-.section-heading {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.2rem;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: var(--text);
-}
-.section-sub {
-  font-size: 0.82rem;
-  color: var(--muted);
-  margin-bottom: 22px;
-  line-height: 1.5;
-}
-
-/* ─────────────────────────────────────────────
-   RESPONSIVENESS
-───────────────────────────────────────────── */
-@media (max-width: 600px) {
-  header { padding: 16px 16px 14px; }
-  header h1 { font-size: 1.2rem; }
-  .tabs-bar { padding: 0 10px; }
-  .tab-btn { padding: 0 14px; font-size: 0.8rem; }
-  main { padding: 18px 12px 50px; }
-  .matrix-toolbar { flex-direction: column; align-items: flex-start; }
-  .properties-grid { grid-template-columns: 1fr; }
+@media(max-width:600px){
+  header{padding:14px 14px 12px}header h1{font-size:1.2rem}
+  .tabs-bar{padding:0 8px}.tab-btn{padding:0 11px;font-size:.78rem}
+  main{padding:16px 10px 50px}
+  .matrix-toolbar,.chk-toolbar{flex-direction:column;align-items:flex-start}
 }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════
-     HEADER
-════════════════════════════════════════ -->
 <header>
   <h1>Matriz de Imóveis</h1>
   <span>Lisboa · Decisão de Compra</span>
 </header>
 
-<!-- ═══════════════════════════════════════
-     TABS BAR
-════════════════════════════════════════ -->
 <div class="tabs-bar" role="tablist">
-  <button class="tab-btn active" role="tab" aria-selected="true"  onclick="switchTab('matriz', this)">🏠 Matriz</button>
-  <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('pesos', this)">⚖️ Pesos</button>
-  <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('pre1951', this)">📜 Pré-1951</button>
+  <button class="tab-btn active" onclick="switchTab('matriz',this)">🏠 Matriz</button>
+  <button class="tab-btn" onclick="switchTab('pesos',this)">⚖️ Pesos</button>
+  <button class="tab-btn" onclick="switchTab('aru',this)">🗺️ ARU</button>
+  <button class="tab-btn" onclick="switchTab('checklists',this)">✅ Checklists</button>
+  <button class="tab-btn" onclick="switchTab('pre1951',this)">📜 Pré-1951</button>
 </div>
 
-<!-- ═══════════════════════════════════════
-     MAIN
-════════════════════════════════════════ -->
 <main>
 
-  <!-- ─────── TAB: MATRIZ ─────── -->
-  <section id="panel-matriz" class="tab-panel active" role="tabpanel">
-    <div class="matrix-toolbar">
-      <div>
-        <div class="section-heading">Comparação de Imóveis</div>
-        <p class="section-sub">Avalia até 4 imóveis pelos critérios definidos. Clica nas opções para pontuar.</p>
-      </div>
-      <button class="btn-add" id="btn-add-prop" onclick="addProperty()">
-        + Adicionar Imóvel
-      </button>
+<!-- ═══ MATRIZ ═══ -->
+<section id="panel-matriz" class="tab-panel active">
+  <div class="matrix-toolbar">
+    <div>
+      <div class="section-heading">Comparação de Imóveis</div>
+      <p class="section-sub">Avalia até 4 imóveis. Clica nas opções para pontuar cada critério.</p>
     </div>
+    <button class="btn-primary" id="btn-add-prop" onclick="addProperty()">+ Adicionar Imóvel</button>
+  </div>
+  <div class="properties-grid" id="properties-grid"></div>
+</section>
 
-    <!-- Cards are rendered here by JS -->
-    <div class="properties-grid" id="properties-grid"></div>
-  </section>
+<!-- ═══ PESOS ═══ -->
+<section id="panel-pesos" class="tab-panel">
+  <div class="weights-panel">
+    <div class="section-heading">Ajustar Pesos dos Critérios</div>
+    <p class="intro">Cada critério tem um multiplicador de 0 a 5. Um peso de <strong>3</strong> vale 3× mais na pontuação final. Ajusta conforme as tuas prioridades — por exemplo, se o metro é essencial, coloca-o em 5.</p>
+    <div id="weights-list"></div>
+    <button class="btn-ghost" style="margin-top:14px" onclick="resetWeights()">↺ Repor Pesos Padrão</button>
+  </div>
+</section>
 
-  <!-- ─────── TAB: PESOS ─────── -->
-  <section id="panel-pesos" class="tab-panel" role="tabpanel">
-    <div class="weights-panel">
-      <div class="section-heading">Ajustar Pesos dos Critérios</div>
-      <p class="intro">
-        Cada critério tem um peso que multiplica a sua pontuação. Um peso de <strong>3</strong> significa que esse critério vale 3× mais. Arrasta os sliders para calibrar a tua decisão.
+<!-- ═══ ARU ═══ -->
+<section id="panel-aru" class="tab-panel">
+  <div class="section-heading">Área de Reabilitação Urbana (ARU)</div>
+  <p class="section-sub">Verifica se cada imóvel se insere numa ARU e acompanha os benefícios fiscais aplicáveis.</p>
+
+  <div class="aru-intro-bar">
+    <div class="ai-icon">🗺️</div>
+    <div>
+      <p>Consulta o mapa oficial da CML:
+        <a href="https://www.cm-lisboa.pt/viver/urbanismo/reabilitacao-urbana/areas-de-reabilitacao-urbana" target="_blank" rel="noopener">cm-lisboa.pt — ARU</a>
+        &nbsp;·&nbsp;
+        <a href="https://lisboainterativa.cm-lisboa.pt/" target="_blank" rel="noopener">Lisboa Interativa (mapa interactivo)</a>
       </p>
-      <!-- Weight items rendered by JS -->
-      <div id="weights-list"></div>
-      <button class="btn-reset-weights" onclick="resetWeights()">↺ Repor Pesos Padrão</button>
+      <p style="margin-top:6px;font-size:.78rem;color:#a09890">No mapa interactivo, activa a camada "ARU" e pesquisa a morada do imóvel para confirmar.</p>
     </div>
-  </section>
+  </div>
 
-  <!-- ─────── TAB: PRÉ-1951 ─────── -->
-  <section id="panel-pre1951" class="tab-panel" role="tabpanel">
-    <div class="section-heading">Imóveis Anteriores a 1951</div>
-    <p class="section-sub">O que precisas de saber antes de comprar um imóvel antigo em Lisboa.</p>
+  <div class="aru-cards-grid" id="aru-cards-grid"></div>
+</section>
 
-    <div class="pre1951-grid">
-
-      <div class="info-card highlight">
-        <div class="ic-icon">📋</div>
-        <div class="tag gold">Definição</div>
-        <h3>O que é um imóvel Pré-1951?</h3>
-        <p>São imóveis cuja construção ficou concluída antes de 1951. Em Lisboa, representam grande parte do parque habitacional das zonas históricas, incluindo Alfama, Mouraria, Intendente e Mouraria.</p>
-      </div>
-
-      <div class="info-card">
-        <div class="ic-icon">🏛️</div>
-        <div class="tag info">Regime Legal</div>
-        <h3>Arrendamento & Renda Antiga</h3>
-        <ul>
-          <li>Podem estar sujeitos ao <strong>NRAU</strong> (Novo Regime do Arrendamento Urbano)</li>
-          <li>Inquilinos com contratos antigos têm proteção especial</li>
-          <li>Actualização de renda pode ser faseada ou condicionada</li>
-          <li>Despejos são processos mais morosos</li>
-        </ul>
-      </div>
-
-      <div class="info-card">
-        <div class="ic-icon">🔧</div>
-        <div class="tag warning">Atenção</div>
-        <h3>Estado de Conservação</h3>
-        <ul>
-          <li>Inspeciona instalações eléctricas (podem ser muito antigas)</li>
-          <li>Verifica canalização e humidades estruturais</li>
-          <li>Coberturas e caleiras frequentemente degradadas</li>
-          <li>Pede relatório de inspecção técnica independente</li>
-        </ul>
-      </div>
-
-      <div class="info-card">
-        <div class="ic-icon">🏗️</div>
-        <div class="tag warning">Obras</div>
-        <h3>Reabilitação Urbana</h3>
-        <ul>
-          <li>Em ARU (Área de Reabilitação Urbana): possíveis incentivos fiscais</li>
-          <li>Obras exteriores sujeitas a aprovação camarária</li>
-          <li>Fachadas e cobertura podem ter condicionantes patrimoniais</li>
-          <li>Orçamenta obras antes de fechar negócio</li>
-        </ul>
-      </div>
-
-      <div class="info-card">
-        <div class="ic-icon">💰</div>
-        <div class="tag green">Fiscalidade</div>
-        <h3>Benefícios Fiscais Possíveis</h3>
-        <ul>
-          <li>IVA reduzido (6%) em obras de reabilitação elegíveis</li>
-          <li>IMI reduzido em imóveis reabilitados em ARU</li>
-          <li>Dedução em IRS de juros de crédito para reabilitação</li>
-          <li>Verifica elegibilidade com AT / Câmara Municipal</li>
-        </ul>
-      </div>
-
-      <div class="info-card">
-        <div class="ic-icon">📐</div>
-        <div class="tag info">Documentação</div>
-        <h3>Documentos a Solicitar</h3>
-        <ul>
-          <li>Caderneta Predial (Finanças)</li>
-          <li>Certidão de Teor (Registo Predial)</li>
-          <li>Licença de Habitabilidade (ou Uso e Habitação)</li>
-          <li>Declaração de não existência de rendas antigas</li>
-          <li>Certificado Energético (mín. F para pré-1951)</li>
-        </ul>
-      </div>
-
+<!-- ═══ CHECKLISTS ═══ -->
+<section id="panel-checklists" class="tab-panel">
+  <div class="chk-toolbar">
+    <div>
+      <div class="section-heading">Checklists por Imóvel</div>
+      <p class="section-sub">Due diligence completa. Marca os itens à medida que avanças no processo.</p>
     </div>
-  </section>
+    <button class="btn-ghost" onclick="resetAllChecklists()">↺ Limpar todas</button>
+  </div>
+  <div class="chk-grid" id="chk-grid"></div>
+</section>
+
+<!-- ═══ PRÉ-1951 ═══ -->
+<section id="panel-pre1951" class="tab-panel">
+  <div class="section-heading">Imóveis Anteriores a 1951</div>
+  <p class="section-sub">O que precisas de saber antes de comprar um imóvel antigo em Lisboa.</p>
+  <div class="pre51-grid">
+
+    <div class="info-card highlight">
+      <div class="ic-icon">📋</div>
+      <div class="tag gold">Definição</div>
+      <h3>O que é um imóvel Pré-1951?</h3>
+      <p>Imóveis cuja construção ficou concluída antes de 1951. Em Lisboa, representam grande parte do parque habitacional histórico — Alfama, Mouraria, Intendente, Bairro Alto, Graça.</p>
+    </div>
+
+    <div class="info-card">
+      <div class="ic-icon">🏛️</div>
+      <div class="tag info">Regime Legal</div>
+      <h3>Arrendamento & Renda Antiga</h3>
+      <ul>
+        <li>Sujeitos ao <strong>NRAU</strong> (Novo Regime do Arrendamento Urbano)</li>
+        <li>Inquilinos com contratos antigos têm protecção especial</li>
+        <li>Actualização de renda pode ser faseada e condicionada</li>
+        <li>Despejos são processos mais morosos e regulados</li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <div class="ic-icon">🔧</div>
+      <div class="tag warning">Atenção</div>
+      <h3>Estado de Conservação</h3>
+      <ul>
+        <li>Inspeciona instalações eléctricas (podem ser muito antigas)</li>
+        <li>Verifica canalização, humidades e estrutura</li>
+        <li>Coberturas e caleiras frequentemente degradadas</li>
+        <li>Pede relatório de inspecção técnica independente</li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <div class="ic-icon">🏗️</div>
+      <div class="tag warning">Obras</div>
+      <h3>Reabilitação Urbana</h3>
+      <ul>
+        <li>Em ARU: possíveis incentivos fiscais relevantes</li>
+        <li>Obras exteriores sujeitas a aprovação camarária</li>
+        <li>Fachadas e cobertura podem ter condicionantes patrimoniais</li>
+        <li>Orçamenta obras antes de fechar negócio</li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <div class="ic-icon">💰</div>
+      <div class="tag green">Fiscalidade</div>
+      <h3>Benefícios Fiscais Possíveis</h3>
+      <ul>
+        <li>IVA reduzido (6%) em obras de reabilitação elegíveis</li>
+        <li>IMI reduzido em imóveis reabilitados em ARU</li>
+        <li>Dedução em IRS de juros de crédito para reabilitação</li>
+        <li>Isenção de mais-valias se arrendado a preço acessível</li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <div class="ic-icon">📐</div>
+      <div class="tag info">Documentação</div>
+      <h3>Documentos a Solicitar</h3>
+      <ul>
+        <li>Caderneta Predial actualizada (Finanças)</li>
+        <li>Certidão de Teor (Registo Predial)</li>
+        <li>Licença de Habitabilidade / Uso e Habitação</li>
+        <li>Declaração de não existência de rendas antigas</li>
+        <li>Certificado Energético (mín. F para pré-1951)</li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <div class="ic-icon">⚠️</div>
+      <div class="tag warning">Riscos</div>
+      <h3>Riscos Comuns a Avaliar</h3>
+      <ul>
+        <li>Partes comuns degradadas (escadas, telhado)</li>
+        <li>Condomínio com quotas em atraso ou fundo vazio</li>
+        <li>Imóvel classificado ou em zona de protecção patrimonial</li>
+        <li>Fracções com inquilinos em renda antiga</li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <div class="ic-icon">🤝</div>
+      <div class="tag info">Negociação</div>
+      <h3>Dicas de Negociação</h3>
+      <ul>
+        <li>Usa o estado de conservação para negociar preço</li>
+        <li>Pede orçamento de obras antes de fazer proposta</li>
+        <li>Verifica se existem licenças de obras pendentes</li>
+        <li>Solicita declaração de não existência de ónus</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
 
 </main>
 
-<!-- ═══════════════════════════════════════
-     JAVASCRIPT
-════════════════════════════════════════ -->
 <script>
-/* ─────────────────────────────────────────────
-   1. DADOS / CONFIGURAÇÃO
-   Define os critérios, as suas opções e pontuações.
-───────────────────────────────────────────── */
-const CRITERIA = [
+/* ════════════════════════════════════════════════
+   1. CRITÉRIOS — agrupados por categoria
+════════════════════════════════════════════════ */
+const CRITERIA_GROUPS = [
   {
-    id: 'localizacao',
-    name: 'Localização',
-    emoji: '📍',
-    options: [
-      { label: 'Mau',       score: 0 },
-      { label: 'Médio',     score: 1 },
-      { label: 'Bom',       score: 2 },
-      { label: 'Excelente', score: 3 }
+    group:'Localização & Acessibilidade',
+    items:[
+      {id:'metro',       name:'Distância ao Metro',         emoji:'🚇',
+       options:[{label:'>15 min',score:0},{label:'10–15 min',score:1},{label:'5–10 min',score:2},{label:'<5 min',score:3}]},
+      {id:'transportes', name:'Transportes Públicos',       emoji:'🚌',
+       options:[{label:'Maus',score:0},{label:'Médios',score:1},{label:'Bons',score:2},{label:'Excelentes',score:3}]},
+      {id:'localizacao', name:'Qualidade da Zona',          emoji:'📍',
+       options:[{label:'Má',score:0},{label:'Média',score:1},{label:'Boa',score:2},{label:'Excelente',score:3}]},
+      {id:'escolas',     name:'Dist. Escolas / Serviços',  emoji:'🏫',
+       options:[{label:'Longe',score:0},{label:'Razoável',score:1},{label:'Perto',score:2},{label:'Muito perto',score:3}]},
     ]
   },
   {
-    id: 'preco',
-    name: 'Preço',
-    emoji: '💶',
-    options: [
-      { label: 'Caro',        score: 0 },
-      { label: 'Razoável',    score: 1 },
-      { label: 'Bom preço',   score: 2 },
-      { label: 'Oportunidade',score: 3 }
+    group:'Imóvel & Condições',
+    items:[
+      {id:'preco',       name:'Preço / Valor de Mercado',  emoji:'💶',
+       options:[{label:'Caro',score:0},{label:'Razoável',score:1},{label:'Bom preço',score:2},{label:'Oportunidade',score:3}]},
+      {id:'tamanho',     name:'Tamanho / Tipologia',       emoji:'📐',
+       options:[{label:'Pequeno',score:1},{label:'Médio',score:2},{label:'Grande',score:3}]},
+      {id:'conservacao', name:'Estado de Conservação',     emoji:'🔧',
+       options:[{label:'Degradado',score:0},{label:'Razoável',score:1},{label:'Bom',score:2},{label:'Excelente',score:3}]},
+      {id:'piso_elev',   name:'Piso & Elevador',           emoji:'🏢',
+       options:[{label:'R/C s/ elev.',score:1},{label:'Alto s/ elev.',score:0},{label:'c/ Elevador',score:2},{label:'Alto c/ elev.',score:3}]},
     ]
   },
   {
-    id: 'tamanho',
-    name: 'Tamanho',
-    emoji: '📐',
-    options: [
-      { label: 'Pequeno', score: 1 },
-      { label: 'Médio',   score: 2 },
-      { label: 'Grande',  score: 3 }
+    group:'Qualidade de Vida',
+    items:[
+      {id:'solar',   name:'Exposição Solar',      emoji:'☀️',
+       options:[{label:'Norte',score:0},{label:'Este/Oeste',score:1},{label:'Sul parcial',score:2},{label:'Sul pleno',score:3}]},
+      {id:'ruido',   name:'Ruído & Vizinhança',   emoji:'🔇',
+       options:[{label:'Muito ruído',score:0},{label:'Algum ruído',score:1},{label:'Tranquilo',score:2},{label:'Silencioso',score:3}]},
+      {id:'obras',   name:'Potencial de Obras',   emoji:'🏗️',
+       options:[{label:'Muito a fazer',score:0},{label:'Alguma obra',score:1},{label:'Pequenos ajustes',score:2},{label:'Pronto a habitar',score:3}]},
+      {id:'garagem', name:'Garagem / Arrumos',    emoji:'🚗',
+       options:[{label:'Sem',score:0},{label:'Arrumos',score:1},{label:'Garagem partilhada',score:2},{label:'Garagem própria',score:3}]},
     ]
   }
 ];
 
-// Pontuação máxima possível por critério (sem peso): max score das options
+// Lista plana de critérios
+const CRITERIA = CRITERIA_GROUPS.flatMap(g => g.items);
+// Pontuação máxima por critério
 const MAX_SCORES = {};
-CRITERIA.forEach(c => {
-  MAX_SCORES[c.id] = Math.max(...c.options.map(o => o.score));
-});
+CRITERIA.forEach(c => { MAX_SCORES[c.id] = Math.max(...c.options.map(o => o.score)); });
 
-/* ─────────────────────────────────────────────
-   2. ESTADO DA APLICAÇÃO
-   Carregado do localStorage; inicializado se vazio.
-───────────────────────────────────────────── */
-let nextId = 1;
-
-// Carrega imóveis guardados ou cria um vazio
-let properties = [];
-try {
-  const saved = JSON.parse(localStorage.getItem('imoveis_props') || '[]');
-  if (Array.isArray(saved) && saved.length > 0) {
-    properties = saved;
-    // Garante que o nextId não colide com ids guardados
-    nextId = Math.max(...saved.map(p => p.id)) + 1;
+/* ════════════════════════════════════════════════
+   2. CHECKLISTS — secções e itens
+════════════════════════════════════════════════ */
+const CHECKLIST_SECTIONS = [
+  {
+    id:'docs', title:'📋 Documentação',
+    items:[
+      {id:'caderneta',    label:'Caderneta Predial actualizada (Finanças)'},
+      {id:'certidao',     label:'Certidão de Teor / Registo Predial'},
+      {id:'licenca',      label:'Licença de Habitabilidade ou Uso e Habitação'},
+      {id:'certenerget',  label:'Certificado Energético obtido'},
+      {id:'habitual',     label:'Declaração de não existência de rendas antigas'},
+      {id:'onus',         label:'Certidão sem ónus ou encargos'},
+    ]
+  },
+  {
+    id:'inspecao', title:'🔍 Inspecção Técnica',
+    items:[
+      {id:'elect',     label:'Instalação eléctrica verificada'},
+      {id:'canal',     label:'Canalização e águas inspeccionadas'},
+      {id:'humid',     label:'Humidades e infiltrações verificadas'},
+      {id:'cobert',    label:'Cobertura e caleiras em bom estado'},
+      {id:'estrut',    label:'Estrutura e paredes sem fissuras graves'},
+      {id:'relatorio', label:'Relatório de inspecção técnica independente'},
+    ]
+  },
+  {
+    id:'condominio', title:'🏢 Condomínio',
+    items:[
+      {id:'atas',       label:'Actas das últimas assembleias consultadas'},
+      {id:'quotas',     label:'Quotas de condomínio em dia'},
+      {id:'fundo',      label:'Fundo de reserva com saldo positivo'},
+      {id:'obras_cond', label:'Sem obras de condomínio pendentes'},
+    ]
+  },
+  {
+    id:'aru_chk', title:'🗺️ ARU & Reabilitação',
+    items:[
+      {id:'aru_conf',  label:'Confirmado se imóvel está em ARU'},
+      {id:'aru_benef', label:'Benefícios fiscais ARU analisados'},
+      {id:'obras_lic', label:'Licença de obras obtida (se necessário)'},
+      {id:'iva6',      label:'IVA 6% aplicável a obras verificado'},
+      {id:'imi_red',   label:'Isenção/redução IMI após reabilitação avaliada'},
+    ]
+  },
+  {
+    id:'financ', title:'💶 Financiamento & Negociação',
+    items:[
+      {id:'banco',     label:'Banco contactado / pré-aprovação obtida'},
+      {id:'orc_obras', label:'Orçamento de obras estimado'},
+      {id:'proposta',  label:'Proposta de compra preparada'},
+      {id:'avaliacao', label:'Avaliação bancária realizada'},
+      {id:'escritura', label:'Data de escritura definida'},
+      {id:'advogado',  label:'Advogado/solicitador contratado'},
+    ]
+  },
+  {
+    id:'pre51_chk', title:'📜 Específico Pré-1951',
+    items:[
+      {id:'ano_constr', label:'Ano de construção confirmado em documentação'},
+      {id:'nrau',       label:'Regime NRAU verificado com advogado'},
+      {id:'inquilinos', label:'Situação de inquilinos esclarecida'},
+      {id:'patrimonio', label:'Verificado se está em zona de protecção patrimonial'},
+      {id:'fachada',    label:'Condicionantes de fachada e cobertura confirmadas'},
+    ]
   }
-} catch(e) { properties = []; }
+];
 
-// Carrega pesos guardados ou usa padrão 2
-let weights = {};
-try {
-  const sw = JSON.parse(localStorage.getItem('imoveis_weights') || '{}');
-  CRITERIA.forEach(c => {
-    weights[c.id] = (typeof sw[c.id] === 'number') ? sw[c.id] : 2;
-  });
-} catch(e) {
-  CRITERIA.forEach(c => weights[c.id] = 2);
-}
+/* ════════════════════════════════════════════════
+   3. BENEFÍCIOS ARU
+════════════════════════════════════════════════ */
+const ARU_BENEFITS = [
+  {id:'iva',    label:'IVA reduzido (6%) em obras de reabilitação elegíveis'},
+  {id:'imi',    label:'Isenção/redução de IMI após reabilitação'},
+  {id:'irs',    label:'Dedução em IRS de juros de crédito para reabilitação'},
+  {id:'mais',   label:'Isenção de mais-valias se arrendado a preço acessível'},
+  {id:'cred',   label:'Acesso a crédito bonificado (Linha Reabilitar para Arrendar)'},
+  {id:'subsid', label:'Subsídio camarário para conservação de fachadas'},
+];
 
-/* ─────────────────────────────────────────────
-   3. PERSISTÊNCIA
-───────────────────────────────────────────── */
-function saveAll() {
-  localStorage.setItem('imoveis_props',    JSON.stringify(properties));
-  localStorage.setItem('imoveis_weights',  JSON.stringify(weights));
-}
+/* ════════════════════════════════════════════════
+   4. ESTADO — localStorage
+════════════════════════════════════════════════ */
+let nextId = 1;
+let properties = [];
+let weights    = {};
+let checklists = {};
+let aruData    = {};
 
-/* ─────────────────────────────────────────────
-   4. CÁLCULO DE PONTUAÇÃO
-   Soma (score_opção × peso) para cada critério.
-   Normaliza para 0–100 para a barra visual.
-───────────────────────────────────────────── */
-function calcScore(prop) {
-  let total = 0;
-  let maxTotal = 0;
-
-  CRITERIA.forEach(c => {
-    const w = weights[c.id] || 1;
-    const sel = prop.selections?.[c.id]; // índice da opção selecionada
-    if (typeof sel === 'number') {
-      total += c.options[sel].score * w;
+function loadState() {
+  try {
+    const ps = JSON.parse(localStorage.getItem('im2_props') || '[]');
+    if(Array.isArray(ps) && ps.length > 0) {
+      properties = ps;
+      nextId = Math.max(...ps.map(p=>p.id)) + 1;
     }
+  } catch(e){}
+
+  try {
+    const sw = JSON.parse(localStorage.getItem('im2_weights') || '{}');
+    CRITERIA.forEach(c => { weights[c.id] = typeof sw[c.id]==='number' ? sw[c.id] : 2; });
+  } catch(e) { CRITERIA.forEach(c => weights[c.id]=2); }
+
+  try { checklists = JSON.parse(localStorage.getItem('im2_checklists') || '{}'); } catch(e){ checklists={}; }
+  try { aruData    = JSON.parse(localStorage.getItem('im2_aru') || '{}'); }        catch(e){ aruData={}; }
+}
+
+function saveState() {
+  localStorage.setItem('im2_props',      JSON.stringify(properties));
+  localStorage.setItem('im2_weights',    JSON.stringify(weights));
+  localStorage.setItem('im2_checklists', JSON.stringify(checklists));
+  localStorage.setItem('im2_aru',        JSON.stringify(aruData));
+}
+
+/* ════════════════════════════════════════════════
+   5. TAB SWITCHING
+════════════════════════════════════════════════ */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='aru')        renderARU();
+  if(name==='checklists') renderChecklists();
+}
+
+/* ════════════════════════════════════════════════
+   6. PROPRIEDADES — CRUD
+════════════════════════════════════════════════ */
+function addProperty() {
+  if(properties.length>=4) return;
+  properties.push({id:nextId++, name:'', selections:{}});
+  saveState(); renderMatrix();
+}
+function removeProperty(id) {
+  if(properties.length<=1) return;
+  properties = properties.filter(p=>p.id!==id);
+  delete checklists[id]; delete aruData[id];
+  saveState(); renderMatrix();
+}
+function resetProperty(id) {
+  properties = properties.map(p=>p.id===id?{...p,selections:{}}:p);
+  saveState(); renderMatrix();
+}
+function updateName(id,val) {
+  properties = properties.map(p=>p.id===id?{...p,name:val}:p);
+  saveState();
+}
+function selectOption(propId,critId,optIdx) {
+  properties = properties.map(p=>p.id===propId?{...p,selections:{...p.selections,[critId]:optIdx}}:p);
+  saveState(); renderMatrix();
+}
+
+/* ════════════════════════════════════════════════
+   7. CÁLCULO DE PONTUAÇÃO
+════════════════════════════════════════════════ */
+function calcScore(prop) {
+  let total=0, maxTotal=0;
+  CRITERIA.forEach(c => {
+    const w=weights[c.id]||0, sel=prop.selections?.[c.id];
+    if(typeof sel==='number') total += c.options[sel].score * w;
     maxTotal += MAX_SCORES[c.id] * w;
   });
-
-  const pct = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
-  return { total, maxTotal, pct };
+  return { pct: maxTotal>0 ? Math.round((total/maxTotal)*100) : 0 };
 }
 
-/* ─────────────────────────────────────────────
-   5. MUDANÇA DE TAB
-───────────────────────────────────────────── */
-function switchTab(name, btn) {
-  // Esconde todos os painéis e desativa botões
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.remove('active');
-    b.setAttribute('aria-selected', 'false');
-  });
-  // Ativa o painel e o botão correcto
-  document.getElementById('panel-' + name).classList.add('active');
-  btn.classList.add('active');
-  btn.setAttribute('aria-selected', 'true');
-}
-
-/* ─────────────────────────────────────────────
-   6. ADICIONAR / REMOVER IMÓVEL
-───────────────────────────────────────────── */
-function addProperty() {
-  if (properties.length >= 4) return;
-  properties.push({ id: nextId++, name: '', selections: {} });
-  saveAll();
-  renderMatrix();
-}
-
-function removeProperty(id) {
-  properties = properties.filter(p => p.id !== id);
-  saveAll();
-  renderMatrix();
-}
-
-function resetProperty(id) {
-  properties = properties.map(p =>
-    p.id === id ? { ...p, selections: {} } : p
-  );
-  saveAll();
-  renderMatrix();
-}
-
-/* ─────────────────────────────────────────────
-   7. ACTUALIZAR NOME
-───────────────────────────────────────────── */
-function updateName(id, val) {
-  properties = properties.map(p =>
-    p.id === id ? { ...p, name: val } : p
-  );
-  saveAll();
-}
-
-/* ─────────────────────────────────────────────
-   8. SELECCIONAR OPÇÃO DE CRITÉRIO
-───────────────────────────────────────────── */
-function selectOption(propId, criterionId, optIdx) {
-  properties = properties.map(p =>
-    p.id === propId
-      ? { ...p, selections: { ...p.selections, [criterionId]: optIdx } }
-      : p
-  );
-  saveAll();
-  // Actualiza apenas o card afectado para evitar re-render total
-  renderMatrix();
-}
-
-/* ─────────────────────────────────────────────
-   9. RENDER DA MATRIZ
-   Cria os cards HTML de raiz.
-───────────────────────────────────────────── */
+/* ════════════════════════════════════════════════
+   8. RENDER: MATRIZ
+════════════════════════════════════════════════ */
 function renderMatrix() {
   const grid = document.getElementById('properties-grid');
   const addBtn = document.getElementById('btn-add-prop');
+  addBtn.disabled = properties.length>=4;
 
-  // Botão de adicionar: desactivado quando já há 4 imóveis
-  addBtn.disabled = properties.length >= 4;
-
-  // Estado vazio
-  if (properties.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1">
-        <div class="icon">🏠</div>
-        <p>Nenhum imóvel adicionado. Clica em <strong>"+ Adicionar Imóvel"</strong> para começar.</p>
-      </div>`;
+  if(properties.length===0) {
+    grid.innerHTML=`<div class="empty-state"><div class="ei">🏠</div><p>Clica em <strong>+ Adicionar Imóvel</strong> para começar.</p></div>`;
     return;
   }
 
-  // Gera o HTML de cada card
   grid.innerHTML = properties.map(prop => {
-    const { pct } = calcScore(prop);
+    const {pct} = calcScore(prop);
+    const aruStatus = aruData[prop.id]?.status||'unknown';
+    const aruLabel  = {yes:'✓ ARU', no:'✗ Fora ARU', unknown:'? ARU'}[aruStatus];
+    const aruClass  = aruStatus;
 
-    // Linhas de critérios
-    const criteriaHtml = CRITERIA.map(c => {
-      const optionsHtml = c.options.map((opt, i) => {
-        const isSel = prop.selections?.[c.id] === i;
-        return `<button
-          class="opt-btn${isSel ? ' selected' : ''}"
-          onclick="selectOption(${prop.id}, '${c.id}', ${i})"
-          title="${c.name}: ${opt.label}"
-        >${opt.label}</button>`;
+    const criteriaHtml = CRITERIA_GROUPS.map(grp => {
+      const rows = grp.items.map(c => {
+        const opts = c.options.map((opt,i) => {
+          const sel = prop.selections?.[c.id]===i;
+          return `<button class="opt-btn${sel?' selected':''}" onclick="selectOption(${prop.id},'${c.id}',${i})">${opt.label}</button>`;
+        }).join('');
+        return `<div><div class="criterion-label">${c.emoji} ${c.name}</div><div class="options-row">${opts}</div></div>`;
       }).join('');
-
-      return `
-        <div>
-          <div class="criterion-label">${c.emoji} ${c.name}</div>
-          <div class="options-row">${optionsHtml}</div>
-        </div>`;
+      return `<div class="grp-divider"><div class="grp-label">${grp.group}</div><div class="criteria-section">${rows}</div></div>`;
     }).join('');
 
-    return `
-      <div class="prop-card" id="card-${prop.id}">
-        <!-- Nome + Remover -->
-        <div class="card-header">
-          <input
-            class="prop-name-input"
-            type="text"
-            value="${escHtml(prop.name)}"
-            placeholder="Nome do imóvel…"
-            maxlength="40"
-            oninput="updateName(${prop.id}, this.value)"
-          >
-          <button class="btn-remove" onclick="removeProperty(${prop.id})" title="Remover imóvel">✕</button>
-        </div>
-
-        <!-- Barra de pontuação -->
-        <div class="score-area">
-          <div class="score-bar-wrap">
-            <div class="score-bar-fill" style="width:${pct}%"></div>
-          </div>
-          <div class="score-badge">${pct}%</div>
-        </div>
-
-        <!-- Critérios -->
-        <div class="criteria-section">
-          ${criteriaHtml}
-        </div>
-
-        <!-- Limpar seleções -->
-        <button class="card-reset" onclick="resetProperty(${prop.id})">
-          ↺ Limpar selecções
-        </button>
-      </div>`;
+    return `<div class="prop-card">
+      <div class="card-header">
+        <input class="prop-name-input" type="text" value="${escHtml(prop.name)}"
+          placeholder="Nome do imóvel…" maxlength="40"
+          oninput="updateName(${prop.id},this.value)">
+        <button class="btn-remove" onclick="removeProperty(${prop.id})" title="Remover">✕</button>
+      </div>
+      <div class="score-area">
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+        <div class="score-badge">${pct}%</div>
+      </div>
+      ${criteriaHtml}
+      <div class="card-footer">
+        <button class="card-reset" onclick="resetProperty(${prop.id})">↺ Limpar selecções</button>
+        <span class="aru-pill ${aruClass}">${aruLabel}</span>
+      </div>
+    </div>`;
   }).join('');
 }
 
-/* ─────────────────────────────────────────────
-   10. RENDER DOS PESOS
-───────────────────────────────────────────── */
+/* ════════════════════════════════════════════════
+   9. RENDER: PESOS
+════════════════════════════════════════════════ */
 function renderWeights() {
-  const list = document.getElementById('weights-list');
-  list.innerHTML = CRITERIA.map(c => {
-    const w = weights[c.id];
-    const optsInfo = c.options.map(o => `${o.label} = ${o.score} pts`).join(' · ');
-    return `
-      <div class="weight-item">
+  document.getElementById('weights-list').innerHTML = CRITERIA_GROUPS.map(grp => {
+    const items = grp.items.map(c => {
+      const w = weights[c.id];
+      const info = c.options.map(o=>`${o.label}=${o.score}pts`).join(' · ');
+      return `<div class="weight-item">
         <div class="weight-item-header">
           <span class="weight-name">${c.emoji} ${c.name}</span>
-          <span class="weight-value-badge" id="wval-${c.id}">×${w}</span>
+          <span class="weight-value-badge" id="wv-${c.id}">×${w}</span>
         </div>
-        <input
-          type="range" min="0" max="5" step="1" value="${w}"
-          class="weight-slider"
-          oninput="updateWeight('${c.id}', this.value)"
-        >
-        <div class="weight-options-info">Opções: ${optsInfo}</div>
+        <input type="range" min="0" max="5" step="1" value="${w}" class="weight-slider"
+          oninput="updateWeight('${c.id}',this.value)">
+        <div class="weight-opts-info">${info}</div>
       </div>`;
+    }).join('');
+    return `<div class="weights-group-label">${grp.group}</div>${items}`;
   }).join('');
 }
-
-/* ─────────────────────────────────────────────
-   11. ACTUALIZAR PESO
-───────────────────────────────────────────── */
-function updateWeight(id, val) {
-  weights[id] = Number(val);
-  // Actualiza o badge sem re-render total dos pesos
-  const badge = document.getElementById('wval-' + id);
-  if (badge) badge.textContent = '×' + val;
-  saveAll();
-  renderMatrix(); // Re-calcula pontuações nos cards
+function updateWeight(id,val) {
+  weights[id]=Number(val);
+  const b=document.getElementById('wv-'+id);
+  if(b) b.textContent='×'+val;
+  saveState(); renderMatrix();
 }
-
-/* ─────────────────────────────────────────────
-   12. RESET DE PESOS
-───────────────────────────────────────────── */
 function resetWeights() {
-  CRITERIA.forEach(c => weights[c.id] = 2);
-  saveAll();
-  renderWeights(); // Re-render do painel de pesos
-  renderMatrix();  // Actualiza pontuações
+  CRITERIA.forEach(c=>weights[c.id]=2);
+  saveState(); renderWeights(); renderMatrix();
 }
 
-/* ─────────────────────────────────────────────
-   13. UTILITÁRIO: escapar HTML para segurança
-───────────────────────────────────────────── */
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/* ─────────────────────────────────────────────
-   14. INICIALIZAÇÃO
-   Se não há imóveis guardados, cria 1 de raiz.
-───────────────────────────────────────────── */
-(function init() {
-  if (properties.length === 0) {
-    properties.push({ id: nextId++, name: '', selections: {} });
-    saveAll();
+/* ════════════════════════════════════════════════
+   10. RENDER: ARU
+════════════════════════════════════════════════ */
+function renderARU() {
+  const grid = document.getElementById('aru-cards-grid');
+  if(properties.length===0) {
+    grid.innerHTML=`<div class="empty-state"><div class="ei">🗺️</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
+    return;
   }
+  grid.innerHTML = properties.map(prop => {
+    if(!aruData[prop.id]) aruData[prop.id]={status:'unknown',morada:'',benefits:{},note:''};
+    const ad = aruData[prop.id];
+    const name = prop.name || `Imóvel ${prop.id}`;
+
+    const toggles = ['yes','no','unknown'].map(s => {
+      const labels={yes:'✓ Está em ARU',no:'✗ Não está',unknown:'❓ Não sei'};
+      return `<button class="aru-toggle-btn${ad.status===s?' sel-'+s:''}"
+        onclick="setARUStatus(${prop.id},'${s}')">${labels[s]}</button>`;
+    }).join('');
+
+    const benefitsHtml = ad.status==='yes' ? `
+      <div>
+        <div class="aru-benefits-title">Benefícios a validar</div>
+        ${ARU_BENEFITS.map(b => {
+          const chk=ad.benefits[b.id]||false;
+          return `<div class="aru-benefit-item${chk?' checked':''}">
+            <input type="checkbox" id="ab-${prop.id}-${b.id}" ${chk?'checked':''}
+              onchange="toggleARUBenefit(${prop.id},'${b.id}',this.checked)">
+            <label for="ab-${prop.id}-${b.id}">${b.label}</label>
+          </div>`;
+        }).join('')}
+      </div>` : '';
+
+    return `<div class="aru-prop-card">
+      <div class="aru-prop-name">${escHtml(name)}</div>
+      <div>
+        <div class="aru-field-label">Morada</div>
+        <input class="aru-morada-input" type="text" value="${escHtml(ad.morada)}"
+          placeholder="Rua, número, freguesia…" oninput="updateARUMorada(${prop.id},this.value)">
+      </div>
+      <div>
+        <div class="aru-field-label" style="margin-bottom:6px">Está em ARU?</div>
+        <div class="aru-toggle-row">${toggles}</div>
+      </div>
+      ${benefitsHtml}
+      <div>
+        <div class="aru-field-label">Notas</div>
+        <textarea class="aru-note-input" placeholder="Observações, contactos CML…"
+          oninput="updateARUNote(${prop.id},this.value)">${escHtml(ad.note)}</textarea>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setARUStatus(propId,status) {
+  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
+  aruData[propId].status=status;
+  saveState(); renderARU(); renderMatrix();
+}
+function toggleARUBenefit(propId,id,checked) {
+  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
+  aruData[propId].benefits[id]=checked;
+  saveState();
+}
+function updateARUMorada(propId,val) {
+  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
+  aruData[propId].morada=val; saveState();
+}
+function updateARUNote(propId,val) {
+  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
+  aruData[propId].note=val; saveState();
+}
+
+/* ════════════════════════════════════════════════
+   11. RENDER: CHECKLISTS
+════════════════════════════════════════════════ */
+function renderChecklists() {
+  const grid = document.getElementById('chk-grid');
+  if(properties.length===0) {
+    grid.innerHTML=`<div class="empty-state"><div class="ei">✅</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
+    return;
+  }
+  grid.innerHTML = properties.map(prop => {
+    if(!checklists[prop.id]) checklists[prop.id]={};
+    const pc = checklists[prop.id];
+    let total=0, done=0;
+    CHECKLIST_SECTIONS.forEach(s=>s.items.forEach(i=>{total++;if(pc[s.id]?.[i.id])done++;}));
+    const name = prop.name || `Imóvel ${prop.id}`;
+
+    const sections = CHECKLIST_SECTIONS.map(sec => {
+      const items = sec.items.map(item => {
+        const checked = pc[sec.id]?.[item.id]||false;
+        return `<div class="chk-item${checked?' done':''}">
+          <input type="checkbox" id="ci-${prop.id}-${sec.id}-${item.id}" ${checked?'checked':''}
+            onchange="toggleCheckItem(${prop.id},'${sec.id}','${item.id}',this.checked)">
+          <label for="ci-${prop.id}-${sec.id}-${item.id}">${item.label}</label>
+        </div>`;
+      }).join('');
+      return `<div class="chk-section"><div class="chk-section-title">${sec.title}</div>${items}</div>`;
+    }).join('');
+
+    return `<div class="chk-card">
+      <div class="chk-card-header">
+        <div class="chk-card-title">${escHtml(name)}</div>
+        <div class="chk-progress" id="chkprog-${prop.id}">${done}/${total}</div>
+      </div>
+      ${sections}
+      <button class="chk-reset-btn" onclick="resetChecklist(${prop.id})">↺ Limpar checklist</button>
+    </div>`;
+  }).join('');
+}
+function toggleCheckItem(propId,secId,itemId,checked) {
+  if(!checklists[propId]) checklists[propId]={};
+  if(!checklists[propId][secId]) checklists[propId][secId]={};
+  checklists[propId][secId][itemId]=checked;
+  saveState();
+  const el = document.querySelector(`#ci-${propId}-${secId}-${itemId}`)?.closest('.chk-item');
+  if(el) el.classList.toggle('done',checked);
+  // Update counter
+  let total=0,done=0;
+  const pc=checklists[propId];
+  CHECKLIST_SECTIONS.forEach(s=>s.items.forEach(i=>{total++;if(pc[s.id]?.[i.id])done++;}));
+  const badge=document.getElementById(`chkprog-${propId}`);
+  if(badge) badge.textContent=`${done}/${total}`;
+}
+function resetChecklist(id) {
+  checklists[id]={}; saveState(); renderChecklists();
+}
+function resetAllChecklists() {
+  checklists={}; saveState(); renderChecklists();
+}
+
+/* ════════════════════════════════════════════════
+   12. UTILS
+════════════════════════════════════════════════ */
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ════════════════════════════════════════════════
+   13. INIT
+════════════════════════════════════════════════ */
+(function init(){
+  loadState();
+  if(properties.length===0){ properties.push({id:nextId++,name:'',selections:{}}); saveState(); }
   renderMatrix();
   renderWeights();
 })();
 </script>
-
 </body>
 </html>
