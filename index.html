@@ -1,389 +1,960 @@
 <!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════╗
+  ║   MATRIZ DE IMÓVEIS — Lisboa                             ║
+  ║   Ferramenta de apoio à decisão de compra                ║
+  ║   100% client-side: sem servidor, sem login, sem cloud   ║
+  ║                                                          ║
+  ║   TABS:                                                  ║
+  ║   🏠 Início     — homepage / resumo                      ║
+  ║   📋 Matriz     — cards de comparação com pontuação      ║
+  ║   ⚖️  Pesos      — sliders para ajustar importância      ║
+  ║   📊 Tabela     — vista tabular + export CSV             ║
+  ║   🗺️  ARU        — verificação de área de reabilitação   ║
+  ║   ✅ Checklists — due diligence por imóvel               ║
+  ║   📖 Guia       — referência geral de compra em Lisboa   ║
+  ╚══════════════════════════════════════════════════════════╝
+-->
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Matriz de Imóveis — Lisboa</title>
+
+<!-- Google Fonts: Playfair Display (títulos serif elegantes) + DM Sans (corpo limpo) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Leaflet CSS — biblioteca de mapas open source (sem API key) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<!-- Leaflet JS — carregado antes do resto para estar disponível quando o mapa abre -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
 <style>
+/* ═══════════════════════════════════════════════════════════
+   CSS CUSTOM PROPERTIES (variáveis globais)
+   Definir aqui torna fácil mudar a paleta inteira num sítio só.
+   Usar var(--nome) em qualquer parte do CSS.
+═══════════════════════════════════════════════════════════ */
 :root {
-  --bg:#f4f1ec; --surface:#fff; --border:#ddd8ce; --text:#1c1917; --muted:#78716c;
-  --gold:#b8975a; --gold-lt:#f0e4cc; --gold-dk:#8a6e3a;
-  --green:#4a7c59; --green-lt:#d1fae5;
-  --red:#c0392b; --red-lt:#fdf0ee;
-  --blue:#1e40af; --blue-lt:#dbeafe;
-  --shadow:0 2px 14px rgba(0,0,0,.07); --radius:12px;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  /* Fundos e superfícies */
+  --bg:       #f4f1ec;   /* fundo geral — bege quente */
+  --surface:  #ffffff;   /* cards, modais, painéis */
+  --border:   #ddd8ce;   /* bordas subtis */
 
-/* HEADER */
-header{background:var(--text);color:#fff;padding:20px 32px 16px;display:flex;align-items:baseline;gap:16px;border-bottom:3px solid var(--gold)}
-header h1{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700}
-header span{font-size:.76rem;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+  /* Texto */
+  --text:     #1c1917;   /* texto principal — quase preto quente */
+  --muted:    #78716c;   /* texto secundário / labels */
 
-/* TABS */
-.tabs-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 28px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.tab-btn{height:44px;padding:0 18px;font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:500;letter-spacing:.03em;cursor:pointer;background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);transition:color .15s,border-color .15s;position:relative;top:1px;white-space:nowrap}
-.tab-btn:hover{color:var(--text)}
-.tab-btn.active{color:var(--gold-dk);border-bottom-color:var(--gold);font-weight:600}
+  /* Dourado — cor de destaque principal */
+  --gold:     #b8975a;
+  --gold-lt:  #f0e4cc;   /* versão clara para fundos */
+  --gold-dk:  #8a6e3a;   /* versão escura para hover */
 
-/* MAIN */
-main{max-width:1200px;margin:0 auto;padding:26px 22px 70px}
-.tab-panel{display:none}.tab-panel.active{display:block}
-.section-heading{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;margin-bottom:5px}
-.section-sub{font-size:.82rem;color:var(--muted);margin-bottom:20px;line-height:1.55}
+  /* Semânticas */
+  --green:    #4a7c59;  --green-lt:  #d1fae5;
+  --red:      #c0392b;  --red-lt:    #fdf0ee;
+  --blue:     #1e40af;  --blue-lt:   #dbeafe;
+  --purple:   #6d28d9;  --purple-lt: #ede9fe;
 
-/* BUTTONS */
-.btn-primary{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:var(--gold);color:#fff;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;letter-spacing:.02em}
-.btn-primary:hover{background:var(--gold-dk)}.btn-primary:active{transform:scale(.97)}.btn-primary:disabled{opacity:.4;cursor:not-allowed}
-.btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:transparent;color:var(--text);border:1.5px solid var(--border);border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .15s}
-.btn-ghost:hover{border-color:var(--gold);color:var(--gold-dk);background:var(--gold-lt)}
-
-/* MATRIZ */
-.matrix-toolbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
-.properties-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:18px}
-.prop-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:18px 16px 14px;display:flex;flex-direction:column;gap:13px;animation:fadeIn .2s ease;transition:box-shadow .15s}
-.prop-card:hover{box-shadow:0 5px 22px rgba(0,0,0,.11)}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.card-header{display:flex;align-items:center;gap:8px}
-.prop-name-input{flex:1;font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;border:none;border-bottom:2px solid var(--border);background:transparent;color:var(--text);padding:2px 0 4px;outline:none;transition:border-color .15s}
-.prop-name-input:focus{border-bottom-color:var(--gold)}
-.prop-name-input::placeholder{color:#bbb;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:400}
-.btn-remove{background:none;border:none;cursor:pointer;color:#bbb;font-size:1.05rem;line-height:1;padding:2px 5px;border-radius:5px;transition:color .13s,background .13s}
-.btn-remove:hover{color:var(--red);background:var(--red-lt)}
-.score-area{display:flex;align-items:center;gap:10px}
-.score-bar-wrap{flex:1;height:7px;background:#eee;border-radius:99px;overflow:hidden}
-.score-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold-dk));transition:width .4s ease}
-.score-badge{font-size:.77rem;font-weight:700;color:var(--gold-dk);min-width:36px;text-align:right}
-.grp-divider{border-top:1px solid #f0ece5;padding-top:10px}
-.grp-label{font-size:.67rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dk);margin-bottom:8px}
-.criteria-section{display:flex;flex-direction:column;gap:11px}
-.criterion-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-.options-row{display:flex;flex-wrap:wrap;gap:4px}
-.opt-btn{padding:3px 9px;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:500;border:1.5px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;transition:all .12s;white-space:nowrap}
-.opt-btn:hover{border-color:var(--gold);color:var(--gold-dk);background:var(--gold-lt)}
-.opt-btn.selected{background:var(--text);color:#fff;border-color:var(--text);font-weight:600}
-.card-footer{display:flex;align-items:center;justify-content:space-between}
-.card-reset{font-size:.71rem;color:var(--muted);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;transition:color .12s}
-.card-reset:hover{color:var(--red)}
-.aru-pill{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.05em;text-transform:uppercase}
-.aru-pill.yes{background:var(--green-lt);color:var(--green)}.aru-pill.no{background:#f3f4f6;color:#9ca3af}.aru-pill.unknown{background:var(--gold-lt);color:var(--gold-dk)}
-.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)}
-.empty-state .ei{font-size:2.5rem;margin-bottom:12px}.empty-state p{font-size:.88rem}
-
-/* PESOS */
-.weights-panel{max-width:560px}
-.weights-panel .intro{font-size:.83rem;color:var(--muted);margin-bottom:22px;line-height:1.6}
-.weights-group-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dk);margin:18px 0 8px;border-left:3px solid var(--gold);padding-left:8px}
-.weight-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:9px;box-shadow:var(--shadow)}
-.weight-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.weight-name{font-size:.88rem;font-weight:600}
-.weight-value-badge{background:var(--gold-lt);color:var(--gold-dk);font-weight:700;font-size:.8rem;padding:2px 10px;border-radius:99px;min-width:32px;text-align:center}
-.weight-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;background:#e8e2d8;outline:none;cursor:pointer}
-.weight-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
-.weight-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid #fff}
-.weight-opts-info{font-size:.72rem;color:var(--muted);margin-top:5px;font-style:italic}
-
-/* ARU */
-.aru-intro-bar{background:var(--text);color:#fff;border-radius:var(--radius);padding:16px 20px;margin-bottom:22px;display:flex;align-items:flex-start;gap:14px}
-.aru-intro-bar .ai-icon{font-size:1.6rem;flex-shrink:0;margin-top:2px}
-.aru-intro-bar p{font-size:.83rem;line-height:1.6;color:#d1cdc7}
-.aru-intro-bar a{color:var(--gold);font-weight:600;text-decoration:underline}
-.aru-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
-.aru-prop-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 16px;display:flex;flex-direction:column;gap:12px}
-.aru-prop-name{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700}
-.aru-toggle-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.aru-toggle-btn{padding:4px 11px;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:600;border:1.5px solid var(--border);border-radius:99px;background:transparent;cursor:pointer;transition:all .12s}
-.aru-toggle-btn:hover{border-color:var(--gold)}
-.aru-toggle-btn.sel-yes{background:var(--green-lt);color:var(--green);border-color:var(--green)}
-.aru-toggle-btn.sel-no{background:var(--red-lt);color:var(--red);border-color:var(--red)}
-.aru-toggle-btn.sel-unknown{background:var(--gold-lt);color:var(--gold-dk);border-color:var(--gold)}
-.aru-field-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-.aru-morada-input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--text);outline:none;transition:border-color .15s}
-.aru-morada-input:focus{border-color:var(--gold)}
-.aru-morada-input::placeholder{color:#bbb}
-.aru-benefits-title{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
-.aru-benefit-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px;cursor:pointer}
-.aru-benefit-item input[type=checkbox]{margin-top:1px;flex-shrink:0;accent-color:var(--green);width:14px;height:14px;cursor:pointer}
-.aru-benefit-item label{font-size:.78rem;color:var(--text);line-height:1.45;cursor:pointer}
-.aru-benefit-item.checked label{color:var(--muted);text-decoration:line-through}
-.aru-note-input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.8rem;color:var(--text);outline:none;resize:vertical;min-height:54px;transition:border-color .15s}
-.aru-note-input:focus{border-color:var(--gold)}
-.aru-note-input::placeholder{color:#bbb}
-
-/* CHECKLISTS */
-.chk-toolbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
-.chk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
-.chk-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-.chk-card-header{background:var(--text);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
-.chk-card-title{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700}
-.chk-progress{font-size:.72rem;font-weight:700;background:rgba(255,255,255,.15);padding:2px 9px;border-radius:99px;color:#fff;letter-spacing:.04em}
-.chk-section{border-bottom:1px solid var(--border)}.chk-section:last-child{border-bottom:none}
-.chk-section-title{font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gold-dk);padding:9px 14px 4px;background:var(--gold-lt)}
-.chk-item{display:flex;align-items:flex-start;gap:9px;padding:7px 14px;border-bottom:1px solid #f3f0eb;cursor:pointer;transition:background .1s}
-.chk-item:hover{background:#fafaf8}.chk-item:last-child{border-bottom:none}
-.chk-item input[type=checkbox]{margin-top:2px;flex-shrink:0;accent-color:var(--green);width:14px;height:14px;cursor:pointer}
-.chk-item label{font-size:.79rem;color:var(--text);line-height:1.45;cursor:pointer}
-.chk-item.done label{color:var(--muted);text-decoration:line-through}
-.chk-reset-btn{display:block;width:100%;padding:9px;font-size:.75rem;font-weight:500;color:var(--muted);background:none;border:none;border-top:1px solid var(--border);cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .13s,background .13s;text-align:center}
-.chk-reset-btn:hover{color:var(--red);background:var(--red-lt)}
-
-/* PRÉ-1951 */
-.pre51-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 18px;box-shadow:var(--shadow)}
-.info-card.highlight{border-left:4px solid var(--gold);background:#fffef9}
-.info-card .ic-icon{font-size:1.5rem;margin-bottom:8px}
-.info-card h3{font-family:'Playfair Display',serif;font-size:.98rem;font-weight:700;margin-bottom:7px}
-.info-card p,.info-card li{font-size:.81rem;color:var(--muted);line-height:1.65}
-.info-card ul{padding-left:15px;margin-top:5px}.info-card li{margin-bottom:3px}
-.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.68rem;font-weight:700;letter-spacing:.06em;margin-bottom:8px;text-transform:uppercase}
-.tag.warning{background:#fef3c7;color:#92400e}.tag.info{background:var(--blue-lt);color:var(--blue)}.tag.gold{background:var(--gold-lt);color:var(--gold-dk)}.tag.green{background:var(--green-lt);color:var(--green)}
-
-@media(max-width:600px){
-  header{padding:14px 14px 12px}header h1{font-size:1.2rem}
-  .tabs-bar{padding:0 8px}.tab-btn{padding:0 11px;font-size:.78rem}
-  main{padding:16px 10px 50px}
-  .matrix-toolbar,.chk-toolbar{flex-direction:column;align-items:flex-start}
+  /* Utilitários */
+  --shadow:   0 2px 14px rgba(0,0,0,.07);
+  --radius:   12px;
 }
 
-/* MAPA MODAL */
-.map-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .18s ease}
-.map-modal{background:var(--surface);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:100%;max-width:780px;height:min(88vh,640px);display:flex;flex-direction:column;overflow:hidden;animation:slideUp .22s ease}
-@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.map-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
-.map-modal-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:10px}
-.map-modal-meta{font-size:.75rem;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400}
-.map-modal-close{background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--muted);padding:4px 6px;border-radius:6px;transition:color .12s,background .12s;line-height:1}
-.map-modal-close:hover{color:var(--text);background:#f3f0eb}
-.map-modal-controls{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
-.map-addr-input{flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--text);outline:none;transition:border-color .15s}
-.map-addr-input:focus{border-color:var(--gold)}
-.map-addr-input::placeholder{color:#bbb}
-.map-geocode-btn{padding:7px 14px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;flex-shrink:0}
-.map-geocode-btn:hover{background:var(--gold-dk)}.map-geocode-btn:disabled{opacity:.5;cursor:not-allowed}
-.map-status-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.map-status{font-size:.74rem;color:var(--muted);font-style:italic}
-.map-status.error{color:var(--red)}.map-status.success{color:var(--green);font-style:normal;font-weight:600}
-.map-metro-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:.72rem;font-weight:700}
-.map-metro-badge.good{background:var(--green-lt);color:var(--green)}
-.map-metro-badge.ok{background:#fef3c7;color:#92400e}
-.map-metro-badge.bad{background:var(--red-lt);color:var(--red)}
-#modal-map{flex:1;min-height:0;z-index:0}
-.map-modal-legend{display:flex;align-items:center;gap:14px;padding:7px 16px;border-top:1px solid var(--border);background:#fafaf8;font-size:.72rem;color:var(--muted);flex-shrink:0;flex-wrap:wrap}
-.leg-item{display:flex;align-items:center;gap:5px}
-.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-/* button inside card to open map */
-.btn-map{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:600;background:var(--blue-lt);color:var(--blue);border:none;border-radius:99px;cursor:pointer;transition:all .13s}
-.btn-map:hover{background:var(--blue);color:#fff}
-.btn-map.located{background:var(--green-lt);color:var(--green)}
-.btn-map.located:hover{background:var(--green);color:#fff}
-/* metro distance shown on card */
-.card-metro-info{display:flex;align-items:center;gap:6px;font-size:.74rem}
-.card-metro-pill{padding:2px 8px;border-radius:99px;font-weight:700;font-size:.7rem}
-.card-metro-pill.good{background:var(--green-lt);color:var(--green)}
-.card-metro-pill.ok{background:#fef3c7;color:#92400e}
-.card-metro-pill.bad{background:var(--red-lt);color:var(--red)}
+/* Reset minimalista — evita diferenças entre browsers */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ═══════════════════════════════════════════════════════════
+   HEADER — barra superior fixa com título e subtítulo
+═══════════════════════════════════════════════════════════ */
+header {
+  background: var(--text);
+  color: #fff;
+  padding: 18px 32px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 3px solid var(--gold);
+}
+header h1 { font-family: 'Playfair Display', serif; font-size: 1.45rem; font-weight: 700; }
+header span { font-size: .75rem; color: var(--gold); letter-spacing: .12em; text-transform: uppercase; font-weight: 500; }
+
+/* ═══════════════════════════════════════════════════════════
+   TABS BAR — navegação horizontal entre painéis
+   overflow-x: auto permite scroll em mobile sem quebrar layout
+═══════════════════════════════════════════════════════════ */
+.tabs-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 28px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* scroll suave iOS */
+}
+.tab-btn {
+  height: 44px;
+  padding: 0 16px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem;
+  font-weight: 500;
+  letter-spacing: .03em;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  transition: color .15s, border-color .15s;
+  position: relative;
+  top: 1px; /* alinha a borda inferior com a do contentor */
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--gold-dk); border-bottom-color: var(--gold); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAINÉIS
+   max-width largo para acomodar até 8 cards de imóveis
+═══════════════════════════════════════════════════════════ */
+main { max-width: 1600px; margin: 0 auto; padding: 26px 22px 70px; }
+.tab-panel { display: none; }               /* escondido por defeito */
+.tab-panel.active { display: block; }       /* o JS activa a classe .active */
+
+/* Cabeçalhos de secção reutilizáveis */
+.section-heading { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700; margin-bottom: 5px; }
+.section-sub { font-size: .82rem; color: var(--muted); margin-bottom: 20px; line-height: 1.55; }
+
+/* ═══════════════════════════════════════════════════════════
+   BOTÕES — dois estilos base: primário (cheio) e ghost (contorno)
+═══════════════════════════════════════════════════════════ */
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px;
+  background: var(--gold); color: #fff;
+  border: none; border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif; font-size: .83rem; font-weight: 600;
+  cursor: pointer; transition: background .15s, transform .1s;
+}
+.btn-primary:hover { background: var(--gold-dk); }
+.btn-primary:active { transform: scale(.97); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px;
+  background: transparent; color: var(--text);
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif; font-size: .82rem; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.btn-ghost:hover { border-color: var(--gold); color: var(--gold-dk); background: var(--gold-lt); }
+
+/* ═══════════════════════════════════════════════════════════
+   HOMEPAGE — tab Início
+═══════════════════════════════════════════════════════════ */
+
+/* Banner de boas-vindas com gradiente escuro */
+.home-hero {
+  background: var(--text);
+  border-radius: 16px;
+  padding: 28px 32px;
+  color: #fff;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.home-hero::before {
+  /* Decoração geométrica de fundo — apenas visual */
+  content: '';
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: .08;
+}
+.home-hero h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 8px; }
+.home-hero p  { font-size: .88rem; color: #c8c3bb; line-height: 1.65; max-width: 520px; }
+
+/* Grid de acesso rápido às tabs */
+.home-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.home-nav-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .12s;
+  text-align: left;
+}
+.home-nav-card:hover {
+  border-color: var(--gold);
+  box-shadow: 0 4px 18px rgba(184,151,90,.15);
+  transform: translateY(-2px);
+}
+.home-nav-card .hnc-icon { font-size: 1.6rem; margin-bottom: 8px; }
+.home-nav-card .hnc-title { font-family: 'Playfair Display', serif; font-size: .9rem; font-weight: 700; margin-bottom: 4px; }
+.home-nav-card .hnc-desc  { font-size: .76rem; color: var(--muted); line-height: 1.45; }
+
+/* Resumo de imóveis na homepage */
+.home-summary-title { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.home-props-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.home-prop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+/* Faixa de cor lateral por imóvel */
+.home-prop-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--prop-color, var(--gold));
+  border-radius: 4px 0 0 4px;
+}
+.home-prop-name  { font-family: 'Playfair Display', serif; font-size: .9rem; font-weight: 700; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-prop-score { font-size: 1.3rem; font-weight: 800; color: var(--gold-dk); }
+.home-prop-bar-wrap { height: 5px; background: #eee; border-radius: 99px; overflow: hidden; margin: 6px 0; }
+.home-prop-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold), var(--gold-dk)); transition: width .5s ease; }
+.home-prop-meta { font-size: .72rem; color: var(--muted); }
+.home-prop-empty { text-align: center; padding: 30px; color: var(--muted); font-size: .85rem; grid-column: 1/-1; border: 2px dashed var(--border); border-radius: var(--radius); }
+
+/* Caixa de dicas de uso */
+.home-tips {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+.home-tips h3 { font-family: 'Playfair Display', serif; font-size: .95rem; font-weight: 700; margin-bottom: 12px; }
+.home-tip-item { display: flex; gap: 10px; margin-bottom: 10px; }
+.home-tip-item:last-child { margin-bottom: 0; }
+.home-tip-num  { width: 22px; height: 22px; background: var(--gold-lt); color: var(--gold-dk); border-radius: 50%; font-size: .72rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.home-tip-text { font-size: .81rem; color: var(--muted); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════════════════
+   MATRIZ — grid de cards de comparação
+═══════════════════════════════════════════════════════════ */
+.matrix-toolbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+
+/* Grid responsivo: 1 col em mobile, até 4+ em desktop */
+.properties-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 18px; }
+
+/* Card individual de imóvel */
+.prop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 18px 16px 14px;
+  display: flex; flex-direction: column; gap: 12px;
+  animation: fadeIn .2s ease;
+  transition: box-shadow .15s;
+}
+.prop-card:hover { box-shadow: 0 5px 22px rgba(0,0,0,.11); }
+
+/* Animação de entrada do card */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Input do nome — inline no cabeçalho do card */
+.card-header { display: flex; align-items: center; gap: 8px; }
+.prop-name-input {
+  flex: 1;
+  font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700;
+  border: none; border-bottom: 2px solid var(--border);
+  background: transparent; color: var(--text);
+  padding: 2px 0 4px; outline: none;
+  transition: border-color .15s;
+}
+.prop-name-input:focus { border-bottom-color: var(--gold); }
+.prop-name-input::placeholder { color: #bbb; font-family: 'DM Sans', sans-serif; font-size: .88rem; font-weight: 400; }
+
+/* Botão remover imóvel */
+.btn-remove { background: none; border: none; cursor: pointer; color: #bbb; font-size: 1.05rem; padding: 2px 5px; border-radius: 5px; transition: color .13s, background .13s; }
+.btn-remove:hover { color: var(--red); background: var(--red-lt); }
+
+/* Barra de pontuação total */
+.score-area { display: flex; align-items: center; gap: 10px; }
+.score-bar-wrap { flex: 1; height: 7px; background: #eee; border-radius: 99px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold), var(--gold-dk)); transition: width .4s ease; }
+.score-badge { font-size: .77rem; font-weight: 700; color: var(--gold-dk); min-width: 36px; text-align: right; }
+
+/* Divisores de grupo dentro do card */
+.grp-divider { border-top: 1px solid #f0ece5; padding-top: 10px; }
+.grp-label    { font-size: .67rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-dk); margin-bottom: 8px; }
+.criteria-section { display: flex; flex-direction: column; gap: 11px; }
+
+/* Label de critério individual */
+.criterion-label { font-size: .7rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+
+/* Botões de opção (pills) — clicáveis para seleccionar score */
+.options-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.opt-btn {
+  padding: 3px 9px;
+  font-family: 'DM Sans', sans-serif; font-size: .76rem; font-weight: 500;
+  border: 1.5px solid var(--border); border-radius: 999px;
+  background: transparent; color: var(--muted);
+  cursor: pointer; transition: all .12s; white-space: nowrap;
+}
+.opt-btn:hover  { border-color: var(--gold); color: var(--gold-dk); background: var(--gold-lt); }
+.opt-btn.selected { background: var(--text); color: #fff; border-color: var(--text); font-weight: 600; }
+/* Versão azul para critérios auto-preenchidos pela geocodificação */
+.opt-btn.auto           { border-color: var(--blue); color: var(--blue); }
+.opt-btn.auto.selected  { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* Rodapé do card: botão limpar + pills de estado */
+.card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.card-reset  { font-size: .71rem; color: var(--muted); text-decoration: underline; cursor: pointer; background: none; border: none; font-family: 'DM Sans', sans-serif; padding: 0; transition: color .12s; }
+.card-reset:hover { color: var(--red); }
+.card-pills  { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+
+/* Pill de estado ARU (aparece no rodapé do card) */
+.aru-pill          { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; letter-spacing: .05em; text-transform: uppercase; }
+.aru-pill.yes      { background: var(--green-lt); color: var(--green); }
+.aru-pill.no       { background: #f3f4f6; color: #9ca3af; }
+.aru-pill.unknown  { background: var(--gold-lt); color: var(--gold-dk); }
+
+/* Mini-botões dentro do card (mapa, docs) */
+.btn-chip         { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; font-family: 'DM Sans', sans-serif; font-size: .72rem; font-weight: 600; border: none; border-radius: 99px; cursor: pointer; transition: all .13s; white-space: nowrap; }
+.btn-chip.blue    { background: var(--blue-lt); color: var(--blue); }
+.btn-chip.blue:hover   { background: var(--blue); color: #fff; }
+.btn-chip.green   { background: var(--green-lt); color: var(--green); }
+.btn-chip.green:hover  { background: var(--green); color: #fff; }
+.btn-chip.purple  { background: var(--purple-lt); color: var(--purple); }
+.btn-chip.purple:hover { background: var(--purple); color: #fff; }
+
+/* Linha de dados de localização automática (metro, bus, walk) */
+.card-location-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.loc-pill         { padding: 2px 8px; border-radius: 99px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+.loc-pill.metro-good { background: var(--green-lt); color: var(--green); }
+.loc-pill.metro-ok   { background: #fef3c7; color: #92400e; }
+.loc-pill.metro-bad  { background: var(--red-lt); color: var(--red); }
+.loc-pill.zone       { background: #f3f4f6; color: #374151; }
+.loc-pill.auto-tag   { background: var(--blue-lt); color: var(--blue); font-size: .64rem; font-weight: 500; }
+
+/* Estado vazio (nenhum imóvel adicionado) */
+.empty-state     { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--muted); }
+.empty-state .ei { font-size: 2.5rem; margin-bottom: 12px; }
+.empty-state p   { font-size: .88rem; }
+
+/* ═══════════════════════════════════════════════════════════
+   PESOS — sliders para ajustar multiplicadores por critério
+═══════════════════════════════════════════════════════════ */
+.weights-panel       { max-width: 560px; }
+.weights-panel .intro{ font-size: .83rem; color: var(--muted); margin-bottom: 22px; line-height: 1.6; }
+
+/* Label de grupo de critérios (com barra lateral dourada) */
+.weights-group-label {
+  font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--gold-dk);
+  margin: 18px 0 8px;
+  border-left: 3px solid var(--gold); padding-left: 8px;
+}
+
+/* Card de cada critério com slider */
+.weight-item        { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 9px; box-shadow: var(--shadow); }
+.weight-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.weight-name        { font-size: .88rem; font-weight: 600; }
+.weight-value-badge { background: var(--gold-lt); color: var(--gold-dk); font-weight: 700; font-size: .8rem; padding: 2px 10px; border-radius: 99px; min-width: 32px; text-align: center; }
+
+/* Slider customizado com polegar dourado */
+.weight-slider                       { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 99px; background: #e8e2d8; outline: none; cursor: pointer; }
+.weight-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); cursor: pointer; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.weight-slider::-moz-range-thumb      { width: 18px; height: 18px; border-radius: 50%; background: var(--gold); cursor: pointer; border: 2px solid #fff; }
+.weight-opts-info   { font-size: .72rem; color: var(--muted); margin-top: 5px; font-style: italic; }
+
+/* ═══════════════════════════════════════════════════════════
+   TABELA COMPARATIVA
+   Scroll horizontal quando há muitos imóveis.
+   first-child sticky para manter labels visíveis no scroll.
+═══════════════════════════════════════════════════════════ */
+#comparison-table th, #comparison-table td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+#comparison-table thead th               { background: var(--text); color: #fff; font-family: 'DM Sans', sans-serif; font-size: .73rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; position: sticky; top: 0; }
+#comparison-table tbody tr:last-child td { border-bottom: none; }
+#comparison-table tbody tr:hover td      { background: #fafaf8; }
+/* Coluna de critério: sticky à esquerda, separada por borda */
+#comparison-table td:first-child { font-size: .78rem; font-weight: 600; color: var(--muted); background: #fafaf8; border-right: 1px solid var(--border); position: sticky; left: 0; z-index: 1; min-width: 160px; }
+#comparison-table .tbl-prop-header { font-family: 'Playfair Display', serif; font-size: .88rem; font-weight: 700; color: var(--text); padding-bottom: 3px; display: flex; align-items: center; gap: 7px; }
+/* Linha de pontuação total com fundo dourado */
+#comparison-table .tbl-score-row td            { background: var(--gold-lt) !important; font-weight: 700; }
+#comparison-table .tbl-score-row td:first-child { background: var(--gold-lt) !important; }
+/* Barra de progresso dentro da tabela */
+#comparison-table .tbl-score-bar      { height: 6px; background: #e0d9cc; border-radius: 99px; overflow: hidden; min-width: 80px; margin-top: 4px; }
+#comparison-table .tbl-score-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold), var(--gold-dk)); }
+/* Linha de cabeçalho de grupo dentro da tabela */
+#comparison-table .tbl-grp-header td { background: #f4f1ec !important; font-size: .67rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-dk); padding: 6px 14px 4px; }
+#comparison-table .tbl-auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); display: inline-block; margin-left: 4px; vertical-align: middle; opacity: .8; }
+/* Medalhas de ranking (1.º, 2.º, 3.º) */
+.tbl-rank   { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: .72rem; font-weight: 800; margin-left: 6px; }
+.tbl-rank-1 { background: #fbbf24; color: #92400e; }
+.tbl-rank-2 { background: #d1d5db; color: #374151; }
+.tbl-rank-3 { background: #d97706; color: #fff; }
+
+/* ═══════════════════════════════════════════════════════════
+   ARU — tab de verificação de área de reabilitação urbana
+═══════════════════════════════════════════════════════════ */
+.aru-intro-bar      { background: var(--text); color: #fff; border-radius: var(--radius); padding: 16px 20px; margin-bottom: 22px; display: flex; align-items: flex-start; gap: 14px; }
+.aru-intro-bar .ai-icon { font-size: 1.6rem; flex-shrink: 0; margin-top: 2px; }
+.aru-intro-bar p    { font-size: .83rem; line-height: 1.6; color: #d1cdc7; }
+.aru-intro-bar a    { color: var(--gold); font-weight: 600; text-decoration: underline; }
+.aru-cards-grid     { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.aru-prop-card      { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+.aru-prop-name      { font-family: 'Playfair Display', serif; font-size: .95rem; font-weight: 700; }
+.aru-toggle-row     { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Botões de toggle ARU: Sim / Não / Não sei */
+.aru-toggle-btn          { padding: 4px 11px; font-family: 'DM Sans', sans-serif; font-size: .75rem; font-weight: 600; border: 1.5px solid var(--border); border-radius: 99px; background: transparent; cursor: pointer; transition: all .12s; }
+.aru-toggle-btn:hover    { border-color: var(--gold); }
+.aru-toggle-btn.sel-yes     { background: var(--green-lt); color: var(--green); border-color: var(--green); }
+.aru-toggle-btn.sel-no      { background: var(--red-lt);   color: var(--red);   border-color: var(--red);   }
+.aru-toggle-btn.sel-unknown { background: var(--gold-lt);  color: var(--gold-dk); border-color: var(--gold); }
+/* Labels e inputs dentro dos cards ARU */
+.aru-field-label    { font-size: .7rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.aru-morada-input, .aru-note-input { width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: .82rem; color: var(--text); outline: none; transition: border-color .15s; }
+.aru-morada-input:focus, .aru-note-input:focus { border-color: var(--gold); }
+.aru-morada-input::placeholder, .aru-note-input::placeholder { color: #bbb; }
+.aru-note-input     { resize: vertical; min-height: 54px; font-size: .8rem; }
+.aru-benefits-title { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+.aru-benefit-item   { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; cursor: pointer; }
+.aru-benefit-item input[type=checkbox] { margin-top: 1px; flex-shrink: 0; accent-color: var(--green); width: 14px; height: 14px; cursor: pointer; }
+.aru-benefit-item label              { font-size: .78rem; color: var(--text); line-height: 1.45; cursor: pointer; }
+.aru-benefit-item.checked label      { color: var(--muted); text-decoration: line-through; }
+
+/* ═══════════════════════════════════════════════════════════
+   CHECKLISTS — due diligence por imóvel
+═══════════════════════════════════════════════════════════ */
+.chk-toolbar  { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+.chk-grid     { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; }
+.chk-card     { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+/* Cabeçalho do card com contador de progresso */
+.chk-card-header  { background: var(--text); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+.chk-card-title   { font-family: 'Playfair Display', serif; font-size: .95rem; font-weight: 700; }
+.chk-progress     { font-size: .72rem; font-weight: 700; background: rgba(255,255,255,.15); padding: 2px 9px; border-radius: 99px; color: #fff; }
+/* Secções da checklist */
+.chk-section        { border-bottom: 1px solid var(--border); }
+.chk-section:last-child { border-bottom: none; }
+.chk-section-title  { font-size: .68rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--gold-dk); padding: 9px 14px 4px; background: var(--gold-lt); }
+/* Item individual da checklist */
+.chk-item { display: flex; align-items: flex-start; gap: 9px; padding: 7px 14px; border-bottom: 1px solid #f3f0eb; cursor: pointer; transition: background .1s; }
+.chk-item:hover       { background: #fafaf8; }
+.chk-item:last-child  { border-bottom: none; }
+.chk-item input[type=checkbox] { margin-top: 2px; flex-shrink: 0; accent-color: var(--green); width: 14px; height: 14px; cursor: pointer; }
+.chk-item label       { font-size: .79rem; color: var(--text); line-height: 1.45; cursor: pointer; }
+.chk-item.done label  { color: var(--muted); text-decoration: line-through; }
+/* Botão de reset da checklist */
+.chk-reset-btn { display: block; width: 100%; padding: 9px; font-size: .75rem; font-weight: 500; color: var(--muted); background: none; border: none; border-top: 1px solid var(--border); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: color .13s, background .13s; text-align: center; }
+.chk-reset-btn:hover { color: var(--red); background: var(--red-lt); }
+
+/* ═══════════════════════════════════════════════════════════
+   GUIA DO COMPRADOR — tab de referência (ex "Pré-1951")
+   Cards informativos agrupados por tema
+═══════════════════════════════════════════════════════════ */
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.info-card  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 18px; box-shadow: var(--shadow); }
+.info-card.highlight { border-left: 4px solid var(--gold); background: #fffef9; }
+.info-card .ic-icon  { font-size: 1.5rem; margin-bottom: 8px; }
+.info-card h3        { font-family: 'Playfair Display', serif; font-size: .98rem; font-weight: 700; margin-bottom: 7px; }
+.info-card p, .info-card li { font-size: .81rem; color: var(--muted); line-height: 1.65; }
+.info-card ul   { padding-left: 15px; margin-top: 5px; }
+.info-card li   { margin-bottom: 3px; }
+/* Tags coloridas de categoria */
+.tag         { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: .68rem; font-weight: 700; letter-spacing: .06em; margin-bottom: 8px; text-transform: uppercase; }
+.tag.warning { background: #fef3c7; color: #92400e; }
+.tag.info    { background: var(--blue-lt);   color: var(--blue); }
+.tag.gold    { background: var(--gold-lt);   color: var(--gold-dk); }
+.tag.green   { background: var(--green-lt);  color: var(--green); }
+.tag.purple  { background: var(--purple-lt); color: var(--purple); }
+.tag.red     { background: var(--red-lt);    color: var(--red); }
+
+/* ═══════════════════════════════════════════════════════════
+   MAP MODAL
+   Aparece como overlay ao clicar "Localizar" num card.
+   Leaflet renderiza dentro de #modal-map.
+═══════════════════════════════════════════════════════════ */
+.map-modal-overlay  { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadeIn .18s ease; }
+.map-modal          { background: var(--surface); border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.3); width: 100%; max-width: 800px; height: min(90vh,660px); display: flex; flex-direction: column; overflow: hidden; animation: slideUp .22s ease; }
+@keyframes slideUp  { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.map-modal-header   { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.map-modal-title    { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.map-modal-meta     { font-size: .75rem; color: var(--muted); font-family: 'DM Sans', sans-serif; font-weight: 400; }
+.map-modal-close    { background: none; border: none; cursor: pointer; font-size: 1.3rem; color: var(--muted); padding: 4px 6px; border-radius: 6px; line-height: 1; transition: color .12s, background .12s; }
+.map-modal-close:hover { color: var(--text); background: #f3f0eb; }
+.map-modal-controls { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+/* Input de morada no modal do mapa */
+.map-addr-input     { flex: 1; min-width: 180px; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: .82rem; color: var(--text); outline: none; transition: border-color .15s; }
+.map-addr-input:focus { border-color: var(--gold); }
+.map-addr-input::placeholder { color: #bbb; }
+.map-geocode-btn    { padding: 7px 14px; background: var(--gold); color: #fff; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .15s; flex-shrink: 0; }
+.map-geocode-btn:hover    { background: var(--gold-dk); }
+.map-geocode-btn:disabled { opacity: .5; cursor: not-allowed; }
+/* Barra de status e pills de resultados auto */
+.map-status-bar     { width: 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 20px; }
+.map-status         { font-size: .74rem; color: var(--muted); font-style: italic; }
+.map-status.error   { color: var(--red); font-style: normal; }
+.map-status.success { color: var(--green); font-style: normal; font-weight: 600; }
+.map-auto-pills     { display: flex; gap: 5px; flex-wrap: wrap; }
+/* Pills de resultados (metro, bus, walk, zona) */
+.map-auto-pill              { padding: 2px 9px; border-radius: 99px; font-size: .71rem; font-weight: 700; }
+.map-auto-pill.metro-good   { background: var(--green-lt); color: var(--green); }
+.map-auto-pill.metro-ok     { background: #fef3c7; color: #92400e; }
+.map-auto-pill.metro-bad    { background: var(--red-lt); color: var(--red); }
+.map-auto-pill.transit      { background: var(--blue-lt); color: var(--blue); }
+.map-auto-pill.zone         { background: #f3f4f6; color: #374151; }
+/* O div do mapa Leaflet ocupa o espaço restante do modal */
+#modal-map          { flex: 1; min-height: 0; z-index: 0; }
+.map-modal-legend   { display: flex; align-items: center; gap: 14px; padding: 7px 16px; border-top: 1px solid var(--border); background: #fafaf8; font-size: .72rem; color: var(--muted); flex-shrink: 0; flex-wrap: wrap; }
+.leg-item           { display: flex; align-items: center; gap: 5px; }
+.leg-dot            { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════
+   DOCS MODAL — gestor de ficheiros por imóvel
+   Ficheiros guardados em IndexedDB (base de dados local)
+═══════════════════════════════════════════════════════════ */
+.docs-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadeIn .18s ease; }
+.docs-modal         { background: var(--surface); border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.3); width: 100%; max-width: 680px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; animation: slideUp .22s ease; }
+.docs-modal-header  { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.docs-modal-title   { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.docs-modal-body    { flex: 1; overflow-y: auto; padding: 18px 20px; }
+.docs-modal-body::-webkit-scrollbar { width: 5px; }
+.docs-modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+/* Zona de drag & drop / clique para upload */
+.doc-upload-zone    { border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; margin-bottom: 16px; }
+.doc-upload-zone:hover, .doc-upload-zone.dragover { border-color: var(--gold); background: var(--gold-lt); }
+.doc-upload-zone .duz-icon { font-size: 2rem; margin-bottom: 8px; }
+.doc-upload-zone p  { font-size: .83rem; color: var(--muted); }
+.doc-upload-zone strong { color: var(--text); }
+.doc-upload-zone input[type=file] { display: none; } /* input real escondido, acionado por JS */
+/* Lista de ficheiros guardados */
+.doc-list    { display: flex; flex-direction: column; gap: 10px; }
+.doc-item    { background: #fafaf8; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; transition: box-shadow .13s; }
+.doc-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+.doc-icon    { font-size: 1.4rem; flex-shrink: 0; }
+.doc-info    { flex: 1; min-width: 0; }
+.doc-name    { font-size: .85rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-meta    { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+.doc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.doc-btn     { padding: 4px 10px; font-family: 'DM Sans', sans-serif; font-size: .72rem; font-weight: 600; border: none; border-radius: 7px; cursor: pointer; transition: all .13s; }
+.doc-btn.view { background: var(--blue-lt); color: var(--blue); }
+.doc-btn.view:hover { background: var(--blue); color: #fff; }
+.doc-btn.del  { background: var(--red-lt); color: var(--red); }
+.doc-btn.del:hover  { background: var(--red); color: #fff; }
+.doc-empty   { text-align: center; padding: 30px 20px; color: var(--muted); font-size: .85rem; }
+/* Barra de uso de espaço */
+.doc-size-bar   { height: 5px; background: #eee; border-radius: 99px; overflow: hidden; margin-top: 8px; }
+.doc-size-fill  { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-dk)); border-radius: 99px; transition: width .4s; }
+.doc-size-label { font-size: .7rem; color: var(--muted); text-align: right; margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════════════════
+   PDF VIEWER — overlay que abre PDFs e imagens guardados
+═══════════════════════════════════════════════════════════ */
+.pdf-viewer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 3000; display: flex; flex-direction: column; align-items: stretch; }
+.pdf-viewer-bar     { display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--text); color: #fff; flex-shrink: 0; }
+.pdf-viewer-name    { font-size: .85rem; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pdf-viewer-close   { background: none; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; padding: 2px 8px; border-radius: 6px; transition: background .12s; line-height: 1; }
+.pdf-viewer-close:hover { background: rgba(255,255,255,.15); }
+.pdf-viewer-frame   { flex: 1; min-height: 0; background: #525659; }
+.pdf-viewer-frame iframe, .pdf-viewer-frame img { width: 100%; height: 100%; border: none; object-fit: contain; display: block; }
+.pdf-dl-btn { padding: 5px 14px; background: var(--gold); color: #fff; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVO — ajustes para mobile/tablet
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  header { padding: 14px 14px 12px; }
+  header h1 { font-size: 1.2rem; }
+  .tabs-bar { padding: 0 8px; }
+  .tab-btn  { padding: 0 11px; font-size: .78rem; }
+  main      { padding: 16px 10px 50px; }
+  .matrix-toolbar, .chk-toolbar { flex-direction: column; align-items: flex-start; }
+  .map-modal, .docs-modal { border-radius: 12px; max-height: 95vh; }
+  .home-hero { padding: 20px 18px; }
+  .home-nav-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
 
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER — permanece visível em todas as tabs
+════════════════════════════════════════════════════════════ -->
 <header>
   <h1>Matriz de Imóveis</h1>
   <span>Lisboa · Decisão de Compra</span>
 </header>
 
+<!-- ═══════════════════════════════════════════════════════════
+     BARRA DE TABS — navegação principal
+     switchTab(nome, botão) é chamado em cada clique
+════════════════════════════════════════════════════════════ -->
 <div class="tabs-bar" role="tablist">
-  <button class="tab-btn active" onclick="switchTab('matriz',this)">🏠 Matriz</button>
-  <button class="tab-btn" onclick="switchTab('pesos',this)">⚖️ Pesos</button>
-  <button class="tab-btn" onclick="switchTab('aru',this)">🗺️ ARU</button>
-  <button class="tab-btn" onclick="switchTab('checklists',this)">✅ Checklists</button>
-  <button class="tab-btn" onclick="switchTab('pre1951',this)">📜 Pré-1951</button>
+  <button class="tab-btn active" onclick="switchTab('inicio',this)">🏠 Início</button>
+  <button class="tab-btn"        onclick="switchTab('matriz',this)">📋 Matriz</button>
+  <button class="tab-btn"        onclick="switchTab('pesos',this)">⚖️ Pesos</button>
+  <button class="tab-btn"        onclick="switchTab('tabela',this)">📊 Tabela</button>
+  <button class="tab-btn"        onclick="switchTab('aru',this)">🗺️ ARU</button>
+  <button class="tab-btn"        onclick="switchTab('checklists',this)">✅ Checklists</button>
+  <button class="tab-btn"        onclick="switchTab('guia',this)">📖 Guia do Comprador</button>
 </div>
 
 <main>
 
-<!-- ═══ MATRIZ ═══ -->
-<section id="panel-matriz" class="tab-panel active">
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: INÍCIO — homepage com resumo e acesso rápido
+════════════════════════════════════════════════════════════ -->
+<section id="panel-inicio" class="tab-panel active">
+
+  <!-- Banner de boas-vindas -->
+  <div class="home-hero">
+    <h2>Bem-vindo à tua Matriz de Imóveis</h2>
+    <p>Compara até 8 imóveis em Lisboa por critérios ponderados, localiza-os no mapa, verifica a proximidade ao metro e transportes, gere documentos e acompanha a due diligence — tudo guardado localmente no teu dispositivo.</p>
+  </div>
+
+  <!-- Acesso rápido às tabs principais -->
+  <div class="home-summary-title">Acesso Rápido</div>
+  <div class="home-nav-grid">
+    <div class="home-nav-card" onclick="goTab('matriz')">
+      <div class="hnc-icon">📋</div>
+      <div class="hnc-title">Matriz</div>
+      <div class="hnc-desc">Adiciona imóveis e pontua cada critério. Compara lado a lado.</div>
+    </div>
+    <div class="home-nav-card" onclick="goTab('pesos')">
+      <div class="hnc-icon">⚖️</div>
+      <div class="hnc-title">Pesos</div>
+      <div class="hnc-desc">Ajusta a importância de cada critério com sliders.</div>
+    </div>
+    <div class="home-nav-card" onclick="goTab('tabela')">
+      <div class="hnc-icon">📊</div>
+      <div class="hnc-title">Tabela</div>
+      <div class="hnc-desc">Vista resumida de todos os imóveis. Exporta para Excel ou CSV.</div>
+    </div>
+    <div class="home-nav-card" onclick="goTab('aru')">
+      <div class="hnc-icon">🗺️</div>
+      <div class="hnc-title">ARU</div>
+      <div class="hnc-desc">Verifica se cada imóvel está numa Área de Reabilitação Urbana.</div>
+    </div>
+    <div class="home-nav-card" onclick="goTab('checklists')">
+      <div class="hnc-icon">✅</div>
+      <div class="hnc-title">Checklists</div>
+      <div class="hnc-desc">Due diligence completa: documentação, inspecção, financiamento.</div>
+    </div>
+    <div class="home-nav-card" onclick="goTab('guia')">
+      <div class="hnc-icon">📖</div>
+      <div class="hnc-title">Guia do Comprador</div>
+      <div class="hnc-desc">Referência sobre imóveis antigos, regime fiscal, riscos e negociação.</div>
+    </div>
+  </div>
+
+  <!-- Resumo dos imóveis activos (renderizado por JS) -->
+  <div class="home-summary-title">Imóveis Activos</div>
+  <div class="home-props-grid" id="home-props-grid"></div>
+
+  <!-- Dicas de uso -->
+  <div class="home-tips">
+    <h3>💡 Como usar esta ferramenta</h3>
+    <div class="home-tip-item">
+      <div class="home-tip-num">1</div>
+      <div class="home-tip-text"><strong>Cria imóveis</strong> na tab <em>Matriz</em> com o botão "+ Adicionar Imóvel". Podes ter até 8 em simultâneo.</div>
+    </div>
+    <div class="home-tip-item">
+      <div class="home-tip-num">2</div>
+      <div class="home-tip-text"><strong>Localiza no mapa</strong> clicando "🗺️ Localizar" em cada card. O app calcula automaticamente distância ao metro, paragens de autocarro e walkability.</div>
+    </div>
+    <div class="home-tip-item">
+      <div class="home-tip-num">3</div>
+      <div class="home-tip-text"><strong>Ajusta os pesos</strong> na tab <em>Pesos</em> conforme as tuas prioridades. Metro muito importante? Sobe para ×5.</div>
+    </div>
+    <div class="home-tip-item">
+      <div class="home-tip-num">4</div>
+      <div class="home-tip-text"><strong>Guarda documentos</strong> (PDFs, certidões, plantas) por imóvel clicando "📁 Docs". Ficam guardados localmente no teu browser.</div>
+    </div>
+    <div class="home-tip-item">
+      <div class="home-tip-num">5</div>
+      <div class="home-tip-text"><strong>Exporta a comparação</strong> na tab <em>Tabela</em> para Excel ou CSV quando precisares de partilhar com alguém.</div>
+    </div>
+    <div class="home-tip-item">
+      <div class="home-tip-num">6</div>
+      <div class="home-tip-text"><strong>Todos os dados ficam no teu dispositivo</strong> — localStorage para configurações e IndexedDB para ficheiros. Fecha e reabre à vontade.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: MATRIZ — cards de comparação de imóveis
+════════════════════════════════════════════════════════════ -->
+<section id="panel-matriz" class="tab-panel">
   <div class="matrix-toolbar">
     <div>
       <div class="section-heading">Comparação de Imóveis</div>
-      <p class="section-sub">Avalia até 4 imóveis. Clica nas opções para pontuar cada critério.</p>
+      <p class="section-sub">Avalia até 8 imóveis. Clica nas opções para pontuar. Critérios marcados AUTO são preenchidos automaticamente ao localizar no mapa.</p>
     </div>
     <button class="btn-primary" id="btn-add-prop" onclick="addProperty()">+ Adicionar Imóvel</button>
   </div>
+  <!-- Os cards são renderizados aqui por renderMatrix() -->
   <div class="properties-grid" id="properties-grid"></div>
 </section>
 
-<!-- ═══ PESOS ═══ -->
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: PESOS — sliders de multiplicadores por critério
+════════════════════════════════════════════════════════════ -->
 <section id="panel-pesos" class="tab-panel">
   <div class="weights-panel">
     <div class="section-heading">Ajustar Pesos dos Critérios</div>
-    <p class="intro">Cada critério tem um multiplicador de 0 a 5. Um peso de <strong>3</strong> vale 3× mais na pontuação final. Ajusta conforme as tuas prioridades — por exemplo, se o metro é essencial, coloca-o em 5.</p>
+    <p class="intro">Multiplicador 0–5 por critério. Peso 3 vale 3× mais na pontuação final. Critérios com <span style="color:var(--blue);font-weight:700">● auto</span> são preenchidos pela geocodificação.</p>
+    <!-- Sliders renderizados por renderWeights() -->
     <div id="weights-list"></div>
     <button class="btn-ghost" style="margin-top:14px" onclick="resetWeights()">↺ Repor Pesos Padrão</button>
   </div>
 </section>
 
-<!-- ═══ MAP MODAL (renderizado por JS) ═══ -->
-<div id="map-modal-overlay" class="map-modal-overlay" style="display:none" onclick="closeMapModal(event)">
-  <div class="map-modal">
-    <div class="map-modal-header">
-      <div class="map-modal-title">
-        <span id="modal-prop-dot" style="width:12px;height:12px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span>
-        <span id="modal-prop-name">—</span>
-        <span class="map-modal-meta" id="modal-prop-meta"></span>
-      </div>
-      <button class="map-modal-close" onclick="closeMapModal()">&times;</button>
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: TABELA — vista tabular com export
+════════════════════════════════════════════════════════════ -->
+<section id="panel-tabela" class="tab-panel">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div class="section-heading">Tabela Comparativa</div>
+      <p class="section-sub">Todos os imóveis e critérios numa vista só. Exporta para partilhar.</p>
     </div>
-    <div class="map-modal-controls">
-      <input class="map-addr-input" id="modal-addr-input" type="text" placeholder="Morada completa, ex: Rua do Carmo 12, Lisboa">
-      <button class="map-geocode-btn" id="modal-geocode-btn" onclick="geocodeModal()">📍 Localizar</button>
-      <div class="map-status-bar">
-        <span class="map-status" id="modal-status"></span>
-        <span class="map-metro-badge" id="modal-metro-badge" style="display:none"></span>
-      </div>
-    </div>
-    <div id="modal-map"></div>
-    <div class="map-modal-legend">
-      <div class="leg-item"><span class="leg-dot" style="background:#e8253d"></span> Estação de Metro</div>
-      <div class="leg-item"><span class="leg-dot" style="background:var(--gold);opacity:.4;width:14px;height:14px;border:2px dashed var(--gold-dk);border-radius:50%"></span> 500 m</div>
-      <div class="leg-item"><span class="leg-dot" style="background:var(--blue);opacity:.3;width:18px;height:18px;border:2px dashed var(--blue);border-radius:50%"></span> 1 km</div>
-      <div style="margin-left:auto;font-size:.7rem">© <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:var(--gold)">OpenStreetMap</a></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-ghost"    onclick="copyTableToClipboard()">📋 Copiar para Excel</button>
+      <button class="btn-primary"  onclick="exportCSV()">⬇ Exportar CSV</button>
     </div>
   </div>
-</div>
+  <div style="overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow)">
+    <!-- Tabela renderizada por renderTable() -->
+    <table id="comparison-table" style="width:100%;border-collapse:collapse;background:var(--surface);font-size:.82rem"></table>
+  </div>
+  <p id="table-copy-msg" style="font-size:.78rem;color:var(--green);margin-top:8px;min-height:18px"></p>
+</section>
 
-<!-- ═══ ARU ═══ -->
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: ARU — verificação de área de reabilitação urbana
+════════════════════════════════════════════════════════════ -->
 <section id="panel-aru" class="tab-panel">
   <div class="section-heading">Área de Reabilitação Urbana (ARU)</div>
   <p class="section-sub">Verifica se cada imóvel se insere numa ARU e acompanha os benefícios fiscais aplicáveis.</p>
-
+  <!-- Barra informativa com links para mapas oficiais -->
   <div class="aru-intro-bar">
     <div class="ai-icon">🗺️</div>
     <div>
-      <p>Consulta o mapa oficial da CML:
+      <p>Mapa oficial CML:
         <a href="https://www.cm-lisboa.pt/viver/urbanismo/reabilitacao-urbana/areas-de-reabilitacao-urbana" target="_blank" rel="noopener">cm-lisboa.pt — ARU</a>
         &nbsp;·&nbsp;
         <a href="https://lisboainterativa.cm-lisboa.pt/" target="_blank" rel="noopener">Lisboa Interativa (mapa interactivo)</a>
       </p>
-      <p style="margin-top:6px;font-size:.78rem;color:#a09890">No mapa interactivo, activa a camada "ARU" e pesquisa a morada do imóvel para confirmar.</p>
+      <p style="margin-top:5px;font-size:.78rem;color:#a09890">Activa a camada "ARU" no mapa interactivo e insere a morada para confirmar.</p>
     </div>
   </div>
-
+  <!-- Cards ARU renderizados por renderARU() -->
   <div class="aru-cards-grid" id="aru-cards-grid"></div>
 </section>
 
-<!-- ═══ CHECKLISTS ═══ -->
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: CHECKLISTS — due diligence por imóvel
+════════════════════════════════════════════════════════════ -->
 <section id="panel-checklists" class="tab-panel">
   <div class="chk-toolbar">
     <div>
       <div class="section-heading">Checklists por Imóvel</div>
-      <p class="section-sub">Due diligence completa. Marca os itens à medida que avanças no processo.</p>
+      <p class="section-sub">Due diligence completa. Marca os itens à medida que avanças no processo de compra.</p>
     </div>
     <button class="btn-ghost" onclick="resetAllChecklists()">↺ Limpar todas</button>
   </div>
+  <!-- Cards de checklist renderizados por renderChecklists() -->
   <div class="chk-grid" id="chk-grid"></div>
 </section>
 
-<!-- ═══ PRÉ-1951 ═══ -->
-<section id="panel-pre1951" class="tab-panel">
-  <div class="section-heading">Imóveis Anteriores a 1951</div>
-  <p class="section-sub">O que precisas de saber antes de comprar um imóvel antigo em Lisboa.</p>
-  <div class="pre51-grid">
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: GUIA DO COMPRADOR
+     Referência geral sobre compra de imóveis em Lisboa,
+     com foco em imóveis antigos mas aplicável a qualquer compra.
+     Substituiu a tab "Pré-1951" que era demasiado restrita.
+════════════════════════════════════════════════════════════ -->
+<section id="panel-guia" class="tab-panel">
+  <div class="section-heading">Guia do Comprador — Lisboa</div>
+  <p class="section-sub">Referência prática para compra de imóveis em Lisboa. Com especial atenção a imóveis anteriores a 1951, mas aplicável a qualquer compra.</p>
 
+  <div class="guide-grid">
+
+    <!-- Imóveis Pré-1951: definição e contexto -->
     <div class="info-card highlight">
       <div class="ic-icon">📋</div>
-      <div class="tag gold">Definição</div>
-      <h3>O que é um imóvel Pré-1951?</h3>
-      <p>Imóveis cuja construção ficou concluída antes de 1951. Em Lisboa, representam grande parte do parque habitacional histórico — Alfama, Mouraria, Intendente, Bairro Alto, Graça.</p>
+      <div class="tag gold">Pré-1951</div>
+      <h3>Imóveis Anteriores a 1951</h3>
+      <p>Construídos antes de 1951, representam grande parte do parque habitacional histórico de Lisboa — Alfama, Mouraria, Intendente, Bairro Alto, Graça, Mouraria. Têm regime legal próprio e requerem due diligence adicional.</p>
     </div>
 
+    <!-- Regime legal do arrendamento -->
     <div class="info-card">
       <div class="ic-icon">🏛️</div>
       <div class="tag info">Regime Legal</div>
       <h3>Arrendamento & Renda Antiga</h3>
       <ul>
         <li>Sujeitos ao <strong>NRAU</strong> (Novo Regime do Arrendamento Urbano)</li>
-        <li>Inquilinos com contratos antigos têm protecção especial</li>
-        <li>Actualização de renda pode ser faseada e condicionada</li>
-        <li>Despejos são processos mais morosos e regulados</li>
+        <li>Inquilinos com contratos antigos têm protecção especial — despejos mais morosos</li>
+        <li>Actualização de renda pode ser faseada e condicionada por lei</li>
+        <li>Verifica sempre existência de arrendatários antes de fechar negócio</li>
       </ul>
     </div>
 
+    <!-- Inspecção técnica — o que verificar -->
     <div class="info-card">
       <div class="ic-icon">🔧</div>
-      <div class="tag warning">Atenção</div>
+      <div class="tag warning">Inspecção</div>
       <h3>Estado de Conservação</h3>
       <ul>
-        <li>Inspeciona instalações eléctricas (podem ser muito antigas)</li>
-        <li>Verifica canalização, humidades e estrutura</li>
-        <li>Coberturas e caleiras frequentemente degradadas</li>
-        <li>Pede relatório de inspecção técnica independente</li>
+        <li>Instalações eléctricas: podem ter décadas, inspeciona sempre</li>
+        <li>Canalização, humidades e estrutura: principais focos de problemas</li>
+        <li>Coberturas e caleiras: degradação frequente em imóveis antigos</li>
+        <li>Pede relatório de inspecção técnica independente antes de fechar</li>
+        <li>Visita em dias de chuva para detectar infiltrações</li>
       </ul>
     </div>
 
+    <!-- ARU e obras de reabilitação -->
     <div class="info-card">
       <div class="ic-icon">🏗️</div>
       <div class="tag warning">Obras</div>
-      <h3>Reabilitação Urbana</h3>
+      <h3>Reabilitação & ARU</h3>
       <ul>
-        <li>Em ARU: possíveis incentivos fiscais relevantes</li>
-        <li>Obras exteriores sujeitas a aprovação camarária</li>
+        <li>Em ARU: acesso a incentivos fiscais relevantes (IVA 6%, IMI reduzido)</li>
+        <li>Obras exteriores sujeitas a aprovação camarária — planeias tempo</li>
         <li>Fachadas e cobertura podem ter condicionantes patrimoniais</li>
-        <li>Orçamenta obras antes de fechar negócio</li>
+        <li>Orçamenta sempre as obras antes de fechar negócio</li>
+        <li>Verifica se existem licenças de obras pendentes ou em curso</li>
       </ul>
     </div>
 
+    <!-- Benefícios fiscais disponíveis -->
     <div class="info-card">
       <div class="ic-icon">💰</div>
       <div class="tag green">Fiscalidade</div>
-      <h3>Benefícios Fiscais Possíveis</h3>
+      <h3>Benefícios Fiscais</h3>
       <ul>
-        <li>IVA reduzido (6%) em obras de reabilitação elegíveis</li>
-        <li>IMI reduzido em imóveis reabilitados em ARU</li>
+        <li>IVA reduzido (6%) em obras de reabilitação elegíveis em ARU</li>
+        <li>IMI reduzido ou isento em imóveis reabilitados em ARU</li>
         <li>Dedução em IRS de juros de crédito para reabilitação</li>
         <li>Isenção de mais-valias se arrendado a preço acessível</li>
+        <li>Linha Reabilitar para Arrendar: crédito bonificado pela CML</li>
+        <li>Consulta sempre AT e Câmara para confirmar elegibilidade</li>
       </ul>
     </div>
 
+    <!-- Documentação essencial -->
     <div class="info-card">
       <div class="ic-icon">📐</div>
       <div class="tag info">Documentação</div>
       <h3>Documentos a Solicitar</h3>
       <ul>
-        <li>Caderneta Predial actualizada (Finanças)</li>
-        <li>Certidão de Teor (Registo Predial)</li>
-        <li>Licença de Habitabilidade / Uso e Habitação</li>
+        <li>Caderneta Predial actualizada (Finanças — AT)</li>
+        <li>Certidão de Teor e Certidão de Registo Predial</li>
+        <li>Licença de Habitabilidade ou Uso e Habitação</li>
         <li>Declaração de não existência de rendas antigas</li>
-        <li>Certificado Energético (mín. F para pré-1951)</li>
+        <li>Certificado Energético (mínimo F para pré-1951)</li>
+        <li>Certidão de não execução de obras pela CML</li>
       </ul>
     </div>
 
+    <!-- Riscos específicos a avaliar -->
     <div class="info-card">
       <div class="ic-icon">⚠️</div>
       <div class="tag warning">Riscos</div>
       <h3>Riscos Comuns a Avaliar</h3>
       <ul>
-        <li>Partes comuns degradadas (escadas, telhado)</li>
-        <li>Condomínio com quotas em atraso ou fundo vazio</li>
+        <li>Partes comuns degradadas: escadas, telhado, fachada</li>
+        <li>Condomínio com quotas em atraso ou fundo de reserva vazio</li>
         <li>Imóvel classificado ou em zona de protecção patrimonial</li>
-        <li>Fracções com inquilinos em renda antiga</li>
+        <li>Fracções com inquilinos em regime de renda antiga</li>
+        <li>Ónus ou penhoras sobre o imóvel (verifica registo predial)</li>
+        <li>Processos de expropriação ou obras municipais planeadas</li>
       </ul>
     </div>
 
+    <!-- Dicas de negociação -->
     <div class="info-card">
       <div class="ic-icon">🤝</div>
-      <div class="tag info">Negociação</div>
+      <div class="tag purple">Negociação</div>
       <h3>Dicas de Negociação</h3>
       <ul>
-        <li>Usa o estado de conservação para negociar preço</li>
-        <li>Pede orçamento de obras antes de fazer proposta</li>
-        <li>Verifica se existem licenças de obras pendentes</li>
-        <li>Solicita declaração de não existência de ónus</li>
+        <li>Usa o estado de conservação para negociar o preço pedido</li>
+        <li>Apresenta orçamento de obras como argumento concreto</li>
+        <li>Estuda o histórico de preços na zona (Confidencial Imobiliário)</li>
+        <li>Negocia prazo entre CPCV e escritura conforme necessidades</li>
+        <li>O sinal típico é 10–30% do valor — confere na escritura</li>
+      </ul>
+    </div>
+
+    <!-- Processo de compra: passo a passo -->
+    <div class="info-card">
+      <div class="ic-icon">🗓️</div>
+      <div class="tag info">Processo</div>
+      <h3>Passos da Compra</h3>
+      <ul>
+        <li><strong>1.</strong> Pré-aprovação bancária (antes de fazer propostas)</li>
+        <li><strong>2.</strong> Proposta de compra verbal ou escrita</li>
+        <li><strong>3.</strong> CPCV (Contrato Promessa) com sinal — recorre a advogado</li>
+        <li><strong>4.</strong> Avaliação bancária do imóvel</li>
+        <li><strong>5.</strong> Aprovação final do crédito</li>
+        <li><strong>6.</strong> Escritura notarial + registo predial</li>
+      </ul>
+    </div>
+
+    <!-- Custos adicionais que os compradores esquecem -->
+    <div class="info-card">
+      <div class="ic-icon">🧾</div>
+      <div class="tag red">Custos Extra</div>
+      <h3>Custos de Transacção</h3>
+      <ul>
+        <li><strong>IMT:</strong> 0–8% conforme valor e finalidade (habitação própria tem reduções)</li>
+        <li><strong>IS:</strong> 0,8% sobre o valor da escritura</li>
+        <li><strong>Notário + registo:</strong> ~800–1500€</li>
+        <li><strong>Advogado/solicitador:</strong> 500–2000€ dependendo da complexidade</li>
+        <li><strong>Avaliação bancária:</strong> 200–400€</li>
+        <li>Conta com 6–10% do valor de compra em custos totais</li>
+      </ul>
+    </div>
+
+    <!-- Crédito habitação: o essencial -->
+    <div class="info-card">
+      <div class="ic-icon">🏦</div>
+      <div class="tag gold">Crédito</div>
+      <h3>Crédito Habitação</h3>
+      <ul>
+        <li>Spread + Euribor (taxa variável) ou taxa fixa — pesa bem cada opção</li>
+        <li>Máximo 90% de LTV (Loan-to-Value) em habitação própria permanente</li>
+        <li>Taxa de esforço máxima: 35–40% do rendimento mensal líquido</li>
+        <li>Compara propostas de pelo menos 3 bancos</li>
+        <li>Seguro de vida e multirriscos habitação são obrigatórios</li>
+      </ul>
+    </div>
+
+    <!-- Mercado de Lisboa: contexto actual -->
+    <div class="info-card">
+      <div class="ic-icon">📈</div>
+      <div class="tag purple">Mercado</div>
+      <h3>Mercado de Lisboa</h3>
+      <ul>
+        <li>Preços médios: 4.500–8.000€/m² dependendo da zona e estado</li>
+        <li>Zonas históricas (Alfama, Mouraria): potencial de revalorização mas mais riscos</li>
+        <li>Zonas em valorização: Beato, Marvila, Mouraria, Intendente</li>
+        <li>Zonas consolidadas premium: Príncipe Real, Estrela, Campo de Ourique</li>
+        <li>Tempo médio de venda: 2–6 meses dependendo da zona e preço</li>
       </ul>
     </div>
 
@@ -392,131 +963,218 @@ main{max-width:1200px;margin:0 auto;padding:26px 22px 70px}
 
 </main>
 
+<!-- ═══════════════════════════════════════════════════════════
+     MAP MODAL — renderizado sobre o conteúdo quando aberto
+     O Leaflet inicializa dentro de #modal-map na primeira abertura
+════════════════════════════════════════════════════════════ -->
+<div id="map-modal-overlay" class="map-modal-overlay" style="display:none" onclick="closeMapModal(event)">
+  <div class="map-modal">
+    <div class="map-modal-header">
+      <div class="map-modal-title">
+        <!-- Ponto de cor do imóvel (actualizado por JS) -->
+        <span id="modal-prop-dot" style="width:13px;height:13px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span>
+        <span id="modal-prop-name">—</span>
+        <span class="map-modal-meta" id="modal-prop-meta"></span>
+      </div>
+      <button class="map-modal-close" onclick="closeMapModal()">&times;</button>
+    </div>
+    <div class="map-modal-controls">
+      <!-- Input de morada + botão de geocodificação -->
+      <input class="map-addr-input" id="modal-addr-input" type="text" placeholder="Morada completa, ex: Rua do Carmo 12, Lisboa">
+      <button class="map-geocode-btn" id="modal-geocode-btn" onclick="geocodeModal()">📍 Localizar & Auto-preencher</button>
+      <!-- Barra de status + pills de resultados automáticos -->
+      <div class="map-status-bar">
+        <span class="map-status" id="modal-status"></span>
+        <div class="map-auto-pills" id="modal-auto-pills"></div>
+      </div>
+    </div>
+    <!-- O mapa Leaflet é inicializado aqui na primeira abertura -->
+    <div id="modal-map"></div>
+    <div class="map-modal-legend">
+      <div class="leg-item"><span class="leg-dot" style="background:#e8253d"></span> Metro</div>
+      <div class="leg-item"><span class="leg-dot" style="background:#0ea5e9"></span> Autocarro/Eléctrico</div>
+      <div class="leg-item"><span style="display:inline-block;width:18px;height:3px;border-top:2px dashed var(--gold-dk);vertical-align:middle"></span> 500 m</div>
+      <div class="leg-item"><span style="display:inline-block;width:18px;height:3px;border-top:2px dashed var(--blue);vertical-align:middle"></span> 1 km</div>
+      <div style="margin-left:auto;font-size:.7rem">© <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:var(--gold)">OpenStreetMap</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DOCS MODAL — gestor de ficheiros por imóvel (IndexedDB)
+════════════════════════════════════════════════════════════ -->
+<div id="docs-modal-overlay" class="docs-modal-overlay" style="display:none" onclick="closeDocsModal(event)">
+  <div class="docs-modal">
+    <div class="docs-modal-header">
+      <div class="docs-modal-title">
+        <span>📁</span>
+        <span id="docs-modal-title-text">Documentos</span>
+      </div>
+      <button class="map-modal-close" onclick="closeDocsModal()">&times;</button>
+    </div>
+    <div class="docs-modal-body">
+      <!-- Zona de upload: clique ou arrastar ficheiros -->
+      <div class="doc-upload-zone" id="doc-upload-zone"
+        onclick="document.getElementById('doc-file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleDocDrop(event)">
+        <div class="duz-icon">📄</div>
+        <p><strong>Clica para adicionar ficheiros</strong> ou arrasta aqui</p>
+        <p style="margin-top:4px;font-size:.76rem">PDF, imagens, Word — guardados localmente no teu dispositivo</p>
+        <!-- Input real escondido — activado pelo clique na zona -->
+        <input type="file" id="doc-file-input" multiple
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt,.xlsx"
+          onchange="handleDocFiles(this.files)">
+      </div>
+      <!-- Barra de uso de espaço e lista de ficheiros -->
+      <div class="doc-size-bar"><div class="doc-size-fill" id="doc-size-fill" style="width:0%"></div></div>
+      <div class="doc-size-label" id="doc-size-label">0 KB guardados</div>
+      <div class="doc-list" id="doc-list" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PDF VIEWER — visualizador fullscreen de PDFs e imagens
+════════════════════════════════════════════════════════════ -->
+<div id="pdf-viewer-overlay" class="pdf-viewer-overlay" style="display:none">
+  <div class="pdf-viewer-bar">
+    <span class="pdf-viewer-name" id="pdf-viewer-name"></span>
+    <button class="pdf-dl-btn" onclick="downloadCurrentDoc()">⬇ Descarregar</button>
+    <button class="pdf-viewer-close" onclick="closePdfViewer()">&times;</button>
+  </div>
+  <div class="pdf-viewer-frame" id="pdf-viewer-frame"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT — toda a lógica da aplicação
+════════════════════════════════════════════════════════════ -->
 <script>
-/* ════════════════════════════════════════════════
-   1. CRITÉRIOS — agrupados por categoria
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 1: CRITÉRIOS DE AVALIAÇÃO
+   ─────────────────────────────────
+   Cada critério tem:
+   - id:       chave única usada para guardar selecções
+   - name:     nome legível para o utilizador
+   - emoji:    ícone visual
+   - autoFill: true se for preenchido automaticamente pela geocodificação
+   - options:  array de opções, cada uma com label e score (0-3)
+
+   A pontuação final de cada imóvel é:
+   Σ (score_opção × peso_critério) / Σ (score_máximo × peso_critério) × 100%
+════════════════════════════════════════════════════════════════ */
 const CRITERIA_GROUPS = [
   {
-    group:'Localização & Acessibilidade',
-    items:[
-      {id:'metro',       name:'Distância ao Metro',         emoji:'🚇',
-       options:[{label:'>15 min',score:0},{label:'10–15 min',score:1},{label:'5–10 min',score:2},{label:'<5 min',score:3}]},
-      {id:'transportes', name:'Transportes Públicos',       emoji:'🚌',
-       options:[{label:'Maus',score:0},{label:'Médios',score:1},{label:'Bons',score:2},{label:'Excelentes',score:3}]},
-      {id:'localizacao', name:'Qualidade da Zona',          emoji:'📍',
-       options:[{label:'Má',score:0},{label:'Média',score:1},{label:'Boa',score:2},{label:'Excelente',score:3}]},
-      {id:'escolas',     name:'Dist. Escolas / Serviços',  emoji:'🏫',
-       options:[{label:'Longe',score:0},{label:'Razoável',score:1},{label:'Perto',score:2},{label:'Muito perto',score:3}]},
+    group: 'Localização & Acessibilidade',
+    items: [
+      { id:'metro',       name:'Distância ao Metro',        emoji:'🚇', autoFill:true,
+        options:[{label:'>15 min',score:0},{label:'10–15 min',score:1},{label:'5–10 min',score:2},{label:'<5 min',score:3}] },
+      { id:'transportes', name:'Transportes Públicos',      emoji:'🚌', autoFill:true,
+        options:[{label:'Maus',score:0},{label:'Médios',score:1},{label:'Bons',score:2},{label:'Excelentes',score:3}] },
+      { id:'localizacao', name:'Qualidade da Zona',         emoji:'📍', autoFill:false,
+        options:[{label:'Má',score:0},{label:'Média',score:1},{label:'Boa',score:2},{label:'Excelente',score:3}] },
+      { id:'escolas',     name:'Dist. Escolas / Serviços', emoji:'🏫', autoFill:false,
+        options:[{label:'Longe',score:0},{label:'Razoável',score:1},{label:'Perto',score:2},{label:'Muito perto',score:3}] },
     ]
   },
   {
-    group:'Imóvel & Condições',
-    items:[
-      {id:'preco',       name:'Preço / Valor de Mercado',  emoji:'💶',
-       options:[{label:'Caro',score:0},{label:'Razoável',score:1},{label:'Bom preço',score:2},{label:'Oportunidade',score:3}]},
-      {id:'tamanho',     name:'Tamanho / Tipologia',       emoji:'📐',
-       options:[{label:'Pequeno',score:1},{label:'Médio',score:2},{label:'Grande',score:3}]},
-      {id:'conservacao', name:'Estado de Conservação',     emoji:'🔧',
-       options:[{label:'Degradado',score:0},{label:'Razoável',score:1},{label:'Bom',score:2},{label:'Excelente',score:3}]},
-      {id:'piso_elev',   name:'Piso & Elevador',           emoji:'🏢',
-       options:[{label:'R/C s/ elev.',score:1},{label:'Alto s/ elev.',score:0},{label:'c/ Elevador',score:2},{label:'Alto c/ elev.',score:3}]},
+    group: 'Imóvel & Condições',
+    items: [
+      { id:'preco',       name:'Preço / Valor de Mercado', emoji:'💶', autoFill:false,
+        options:[{label:'Caro',score:0},{label:'Razoável',score:1},{label:'Bom preço',score:2},{label:'Oportunidade',score:3}] },
+      { id:'tamanho',     name:'Tamanho / Tipologia',      emoji:'📐', autoFill:false,
+        options:[{label:'Pequeno',score:1},{label:'Médio',score:2},{label:'Grande',score:3}] },
+      { id:'conservacao', name:'Estado de Conservação',    emoji:'🔧', autoFill:false,
+        options:[{label:'Degradado',score:0},{label:'Razoável',score:1},{label:'Bom',score:2},{label:'Excelente',score:3}] },
+      { id:'piso_elev',   name:'Piso & Elevador',          emoji:'🏢', autoFill:false,
+        options:[{label:'R/C s/ elev.',score:1},{label:'Alto s/ elev.',score:0},{label:'c/ Elevador',score:2},{label:'Alto c/ elev.',score:3}] },
     ]
   },
   {
-    group:'Qualidade de Vida',
-    items:[
-      {id:'solar',   name:'Exposição Solar',      emoji:'☀️',
-       options:[{label:'Norte',score:0},{label:'Este/Oeste',score:1},{label:'Sul parcial',score:2},{label:'Sul pleno',score:3}]},
-      {id:'ruido',   name:'Ruído & Vizinhança',   emoji:'🔇',
-       options:[{label:'Muito ruído',score:0},{label:'Algum ruído',score:1},{label:'Tranquilo',score:2},{label:'Silencioso',score:3}]},
-      {id:'obras',   name:'Potencial de Obras',   emoji:'🏗️',
-       options:[{label:'Muito a fazer',score:0},{label:'Alguma obra',score:1},{label:'Pequenos ajustes',score:2},{label:'Pronto a habitar',score:3}]},
-      {id:'garagem', name:'Garagem / Arrumos',    emoji:'🚗',
-       options:[{label:'Sem',score:0},{label:'Arrumos',score:1},{label:'Garagem partilhada',score:2},{label:'Garagem própria',score:3}]},
+    group: 'Qualidade de Vida',
+    items: [
+      { id:'solar',   name:'Exposição Solar',    emoji:'☀️', autoFill:false,
+        options:[{label:'Norte',score:0},{label:'Este/Oeste',score:1},{label:'Sul parcial',score:2},{label:'Sul pleno',score:3}] },
+      { id:'ruido',   name:'Ruído & Vizinhança', emoji:'🔇', autoFill:false,
+        options:[{label:'Muito ruído',score:0},{label:'Algum ruído',score:1},{label:'Tranquilo',score:2},{label:'Silencioso',score:3}] },
+      { id:'obras',   name:'Potencial de Obras', emoji:'🏗️', autoFill:false,
+        options:[{label:'Muito a fazer',score:0},{label:'Alguma obra',score:1},{label:'Pequenos ajustes',score:2},{label:'Pronto a habitar',score:3}] },
+      { id:'garagem', name:'Garagem / Arrumos',  emoji:'🚗', autoFill:false,
+        options:[{label:'Sem',score:0},{label:'Arrumos',score:1},{label:'Garagem partilhada',score:2},{label:'Garagem própria',score:3}] },
     ]
   }
 ];
 
-// Lista plana de critérios
+/* Lista plana de critérios (útil para iterações simples) */
 const CRITERIA = CRITERIA_GROUPS.flatMap(g => g.items);
-// Pontuação máxima por critério
+
+/* Score máximo possível por critério (sem peso) — usado para normalização */
 const MAX_SCORES = {};
 CRITERIA.forEach(c => { MAX_SCORES[c.id] = Math.max(...c.options.map(o => o.score)); });
 
-/* ════════════════════════════════════════════════
-   2. CHECKLISTS — secções e itens
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 2: CHECKLISTS DE DUE DILIGENCE
+   ─────────────────────────────────────
+   Cada secção agrupa itens relacionados.
+   Os itens são armazenados como {propId: {sectionId: {itemId: bool}}}
+   em localStorage (chave 'im3_checklists').
+════════════════════════════════════════════════════════════════ */
 const CHECKLIST_SECTIONS = [
-  {
-    id:'docs', title:'📋 Documentação',
-    items:[
-      {id:'caderneta',    label:'Caderneta Predial actualizada (Finanças)'},
-      {id:'certidao',     label:'Certidão de Teor / Registo Predial'},
-      {id:'licenca',      label:'Licença de Habitabilidade ou Uso e Habitação'},
-      {id:'certenerget',  label:'Certificado Energético obtido'},
-      {id:'habitual',     label:'Declaração de não existência de rendas antigas'},
-      {id:'onus',         label:'Certidão sem ónus ou encargos'},
-    ]
-  },
-  {
-    id:'inspecao', title:'🔍 Inspecção Técnica',
-    items:[
-      {id:'elect',     label:'Instalação eléctrica verificada'},
-      {id:'canal',     label:'Canalização e águas inspeccionadas'},
-      {id:'humid',     label:'Humidades e infiltrações verificadas'},
-      {id:'cobert',    label:'Cobertura e caleiras em bom estado'},
-      {id:'estrut',    label:'Estrutura e paredes sem fissuras graves'},
-      {id:'relatorio', label:'Relatório de inspecção técnica independente'},
-    ]
-  },
-  {
-    id:'condominio', title:'🏢 Condomínio',
-    items:[
-      {id:'atas',       label:'Actas das últimas assembleias consultadas'},
-      {id:'quotas',     label:'Quotas de condomínio em dia'},
-      {id:'fundo',      label:'Fundo de reserva com saldo positivo'},
-      {id:'obras_cond', label:'Sem obras de condomínio pendentes'},
-    ]
-  },
-  {
-    id:'aru_chk', title:'🗺️ ARU & Reabilitação',
-    items:[
-      {id:'aru_conf',  label:'Confirmado se imóvel está em ARU'},
-      {id:'aru_benef', label:'Benefícios fiscais ARU analisados'},
-      {id:'obras_lic', label:'Licença de obras obtida (se necessário)'},
-      {id:'iva6',      label:'IVA 6% aplicável a obras verificado'},
-      {id:'imi_red',   label:'Isenção/redução IMI após reabilitação avaliada'},
-    ]
-  },
-  {
-    id:'financ', title:'💶 Financiamento & Negociação',
-    items:[
-      {id:'banco',     label:'Banco contactado / pré-aprovação obtida'},
-      {id:'orc_obras', label:'Orçamento de obras estimado'},
-      {id:'proposta',  label:'Proposta de compra preparada'},
-      {id:'avaliacao', label:'Avaliação bancária realizada'},
-      {id:'escritura', label:'Data de escritura definida'},
-      {id:'advogado',  label:'Advogado/solicitador contratado'},
-    ]
-  },
-  {
-    id:'pre51_chk', title:'📜 Específico Pré-1951',
-    items:[
-      {id:'ano_constr', label:'Ano de construção confirmado em documentação'},
-      {id:'nrau',       label:'Regime NRAU verificado com advogado'},
-      {id:'inquilinos', label:'Situação de inquilinos esclarecida'},
-      {id:'patrimonio', label:'Verificado se está em zona de protecção patrimonial'},
-      {id:'fachada',    label:'Condicionantes de fachada e cobertura confirmadas'},
-    ]
-  }
+  { id:'docs', title:'📋 Documentação', items:[
+    {id:'caderneta',   label:'Caderneta Predial actualizada (Finanças)'},
+    {id:'certidao',    label:'Certidão de Teor / Registo Predial'},
+    {id:'licenca',     label:'Licença de Habitabilidade ou Uso e Habitação'},
+    {id:'certenerget', label:'Certificado Energético obtido'},
+    {id:'habitual',    label:'Declaração de não existência de rendas antigas'},
+    {id:'onus',        label:'Certidão sem ónus ou encargos'},
+  ]},
+  { id:'inspecao', title:'🔍 Inspecção Técnica', items:[
+    {id:'elect',     label:'Instalação eléctrica verificada'},
+    {id:'canal',     label:'Canalização e águas inspeccionadas'},
+    {id:'humid',     label:'Humidades e infiltrações verificadas'},
+    {id:'cobert',    label:'Cobertura e caleiras em bom estado'},
+    {id:'estrut',    label:'Estrutura e paredes sem fissuras graves'},
+    {id:'relatorio', label:'Relatório de inspecção técnica independente'},
+  ]},
+  { id:'condominio', title:'🏢 Condomínio', items:[
+    {id:'atas',       label:'Actas das últimas assembleias consultadas'},
+    {id:'quotas',     label:'Quotas de condomínio em dia'},
+    {id:'fundo',      label:'Fundo de reserva com saldo positivo'},
+    {id:'obras_cond', label:'Sem obras de condomínio pendentes'},
+  ]},
+  { id:'aru_chk', title:'🗺️ ARU & Reabilitação', items:[
+    {id:'aru_conf',  label:'Confirmado se imóvel está em ARU'},
+    {id:'aru_benef', label:'Benefícios fiscais ARU analisados'},
+    {id:'obras_lic', label:'Licença de obras obtida (se necessário)'},
+    {id:'iva6',      label:'IVA 6% aplicável a obras verificado'},
+    {id:'imi_red',   label:'Isenção/redução IMI após reabilitação avaliada'},
+  ]},
+  { id:'financ', title:'💶 Financiamento & Negociação', items:[
+    {id:'banco',     label:'Banco contactado / pré-aprovação obtida'},
+    {id:'orc_obras', label:'Orçamento de obras estimado'},
+    {id:'proposta',  label:'Proposta de compra preparada'},
+    {id:'avaliacao', label:'Avaliação bancária realizada'},
+    {id:'escritura', label:'Data de escritura definida'},
+    {id:'advogado',  label:'Advogado/solicitador contratado'},
+  ]},
+  { id:'pre51_chk', title:'📜 Específico Pré-1951', items:[
+    {id:'ano_constr', label:'Ano de construção confirmado em documentação'},
+    {id:'nrau',       label:'Regime NRAU verificado com advogado'},
+    {id:'inquilinos', label:'Situação de inquilinos esclarecida'},
+    {id:'patrimonio', label:'Verificado se está em zona de protecção patrimonial'},
+    {id:'fachada',    label:'Condicionantes de fachada e cobertura confirmadas'},
+  ]},
 ];
 
-/* ════════════════════════════════════════════════
-   3. BENEFÍCIOS ARU
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 3: BENEFÍCIOS ARU
+   ─────────────────────────
+   Aparecem na tab ARU quando o imóvel está marcado como "em ARU".
+   Guardados em aruData[propId].benefits como {id: bool}.
+════════════════════════════════════════════════════════════════ */
 const ARU_BENEFITS = [
-  {id:'iva',    label:'IVA reduzido (6%) em obras de reabilitação elegíveis'},
+  {id:'iva',    label:'IVA reduzido (6%) em obras elegíveis'},
   {id:'imi',    label:'Isenção/redução de IMI após reabilitação'},
   {id:'irs',    label:'Dedução em IRS de juros de crédito para reabilitação'},
   {id:'mais',   label:'Isenção de mais-valias se arrendado a preço acessível'},
@@ -524,140 +1182,455 @@ const ARU_BENEFITS = [
   {id:'subsid', label:'Subsídio camarário para conservação de fachadas'},
 ];
 
-/* ════════════════════════════════════════════════
-   4. ESTADO — localStorage
-════════════════════════════════════════════════ */
-let nextId = 1;
-let properties = [];
-let weights    = {};
-let checklists = {};
-let aruData    = {};
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 4: METRO DE LISBOA — linhas por estação
+   ─────────────────────────────────────────────
+   Usado para mostrar badges coloridos de linha no mapa e nos cards.
+   Amarela=Y, Verde=G (Gaivota), Azul=B, Vermelha=R
+   Nota: a linha Verde da OSM às vezes aparece como 'V' no código legado.
+════════════════════════════════════════════════════════════════ */
+const METRO_LINE_COLORS = { Y:'#f5c800', G:'#00a651', B:'#1e5fa8', R:'#ee3124' };
+const METRO_LINE_NAMES  = { Y:'Amarela', G:'Verde', B:'Azul', R:'Vermelha' };
 
+/* Mapeamento: nome da estação → array de códigos de linha */
+const METRO_LINES_MAP = {
+  /* Linha Amarela (Y) */
+  'Rato':['Y'], 'Marquês de Pombal':['Y','B'], 'Picoas':['Y'], 'Saldanha':['Y','G'],
+  'Campo Pequeno':['Y'], 'Entre Campos':['Y'], 'Entrecampos':['Y'],
+  'Cidade Universitária':['Y'], 'Quinta das Conchas':['Y'],
+  'Odivelas':['Y'], 'Senhor Roubado':['Y'], 'Alfornelos':['Y'],
+  'Pontinha':['Y'], 'Carnide':['Y'], 'Colégio Militar':['Y'],
+  'Alto dos Moinhos':['Y'], 'Laranjeiras':['Y'], 'Jardim Zoológico':['Y'],
+  /* Linha Verde (G) — Gaivota */
+  'Cais do Sodré':['G'], 'Santos':['G'], 'Estrela':['G'], 'Infante Santo':['G'],
+  'Alcântara-Mar':['G'], 'Baixa-Chiado':['G','B'], 'Restauradores':['G','B'],
+  'Intendente':['G'], 'Anjos':['G'], 'Arroios':['G'], 'Alameda':['G','R'],
+  'Areeiro':['G'], 'Roma':['G'], 'Bela Vista':['G'], 'Chelas':['G'],
+  'Olivais':['G'], 'Oriente':['G','R'], 'Encarnação':['G','R'],
+  /* Linha Azul (B) */
+  'Rossio':['B'], 'Avenida':['B'], 'Parque':['B'],
+  'São Sebastião':['B','Y'], 'Praça de Espanha':['B'],
+  'Terreiro do Paço':['B'], 'Santa Apolónia':['B'],
+  /* Linha Vermelha (R) */
+  'Olaias':['R'], 'Moscavide':['R'], 'Aeroporto':['R'],
+};
+
+/**
+ * metroLineBadges(stationName)
+ * Devolve HTML com círculos coloridos das linhas da estação.
+ * Usado nos tooltips do mapa e nos pills do card.
+ */
+function metroLineBadges(stationName) {
+  const lines = METRO_LINES_MAP[stationName] || [];
+  if (!lines.length) return '';
+  return lines.map(l =>
+    `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+      background:${METRO_LINE_COLORS[l]||'#999'};
+      border:1.5px solid rgba(0,0,0,.15);
+      vertical-align:middle;margin-right:2px"
+      title="Linha ${METRO_LINE_NAMES[l]||l}"></span>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 5: CORES DOS IMÓVEIS
+   ────────────────────────────
+   Cada imóvel tem uma cor única para identificação visual
+   em cards, tabela, mapa e homepage.
+════════════════════════════════════════════════════════════════ */
+const PROP_COLORS = [
+  '#b8975a', // Dourado
+  '#4a7c59', // Verde
+  '#1e40af', // Azul
+  '#c0392b', // Vermelho
+  '#7c3aed', // Violeta
+  '#0891b2', // Ciano
+  '#b45309', // Âmbar
+  '#be185d', // Rosa
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 6: ESTADO DA APLICAÇÃO
+   ──────────────────────────────
+   Toda a informação é guardada em variáveis JS e sincronizada
+   com localStorage em cada alteração via saveState().
+
+   Estruturas de dados:
+   - properties: [{id, name, selections:{critId: optIdx}}]
+   - weights:    {critId: número 0-5}
+   - checklists: {propId: {sectionId: {itemId: bool}}}
+   - aruData:    {propId: {status, morada, benefits, note}}
+   - geoCache:   {propId: {lat, lng, address, metroDist, metroName,
+                            busCount, busStops, walkScore, freguesia, ...}}
+
+   Ficheiros (PDFs, etc.) ficam em IndexedDB (ver Secção 7).
+════════════════════════════════════════════════════════════════ */
+let nextId     = 1;        // contador auto-incremento para IDs de imóvel
+let properties = [];       // array de imóveis
+let weights    = {};       // multiplicadores de critério
+let checklists = {};       // estado de checkboxes por imóvel
+let aruData    = {};       // dados ARU por imóvel
+let geoCache   = {};       // coordenadas e dados de localização por imóvel
+
+/**
+ * loadState()
+ * Carrega todos os dados do localStorage no início.
+ * Usa try/catch para não crashar se os dados estiverem corrompidos.
+ */
 function loadState() {
   try {
-    const ps = JSON.parse(localStorage.getItem('im2_props') || '[]');
-    if(Array.isArray(ps) && ps.length > 0) {
+    const ps = JSON.parse(localStorage.getItem('im3_props') || '[]');
+    if (Array.isArray(ps) && ps.length > 0) {
       properties = ps;
-      nextId = Math.max(...ps.map(p=>p.id)) + 1;
+      nextId = Math.max(...ps.map(p => p.id)) + 1;
     }
-  } catch(e){}
+  } catch(e) {}
 
   try {
-    const sw = JSON.parse(localStorage.getItem('im2_weights') || '{}');
-    CRITERIA.forEach(c => { weights[c.id] = typeof sw[c.id]==='number' ? sw[c.id] : 2; });
-  } catch(e) { CRITERIA.forEach(c => weights[c.id]=2); }
+    const sw = JSON.parse(localStorage.getItem('im3_weights') || '{}');
+    CRITERIA.forEach(c => { weights[c.id] = typeof sw[c.id] === 'number' ? sw[c.id] : 2; });
+  } catch(e) { CRITERIA.forEach(c => weights[c.id] = 2); }
 
-  try { checklists = JSON.parse(localStorage.getItem('im2_checklists') || '{}'); } catch(e){ checklists={}; }
-  try { aruData    = JSON.parse(localStorage.getItem('im2_aru') || '{}'); }        catch(e){ aruData={}; }
+  try { checklists = JSON.parse(localStorage.getItem('im3_checklists') || '{}'); } catch(e) { checklists = {}; }
+  try { aruData    = JSON.parse(localStorage.getItem('im3_aru')        || '{}'); } catch(e) { aruData = {}; }
+  try { geoCache   = JSON.parse(localStorage.getItem('im3_geo')        || '{}'); } catch(e) { geoCache = {}; }
 }
 
+/**
+ * saveState()
+ * Serializa todo o estado para localStorage.
+ * Chamada após qualquer alteração de dados.
+ * Nota: ficheiros (IndexedDB) têm o seu próprio fluxo de save.
+ */
 function saveState() {
-  localStorage.setItem('im2_props',      JSON.stringify(properties));
-  localStorage.setItem('im2_weights',    JSON.stringify(weights));
-  localStorage.setItem('im2_checklists', JSON.stringify(checklists));
-  localStorage.setItem('im2_aru',        JSON.stringify(aruData));
+  localStorage.setItem('im3_props',      JSON.stringify(properties));
+  localStorage.setItem('im3_weights',    JSON.stringify(weights));
+  localStorage.setItem('im3_checklists', JSON.stringify(checklists));
+  localStorage.setItem('im3_aru',        JSON.stringify(aruData));
+  localStorage.setItem('im3_geo',        JSON.stringify(geoCache));
 }
 
-/* ════════════════════════════════════════════════
-   5. TAB SWITCHING
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 7: INDEXEDDB — armazenamento de ficheiros
+   ─────────────────────────────────────────────────
+   O localStorage só suporta strings (limite ~5-10MB).
+   Para ficheiros binários (PDFs, imagens) usamos IndexedDB,
+   que suporta ArrayBuffers e tem limite muito maior (~quota do disco).
+
+   Schema:
+   - Database: 'ImovelDocs', version 1
+   - Object store: 'docs', keyPath: 'key'
+   - key format: "propId:docId" (ex: "3:1703001234567_abc")
+   - Cada record: { key, propId, docId, name, size, type, added, data }
+   - 'data' é um ArrayBuffer com o conteúdo binário do ficheiro
+════════════════════════════════════════════════════════════════ */
+let db = null;  // instância do IndexedDB (null até openDB() ser chamado)
+const DB_NAME    = 'ImovelDocs';
+const DB_VERSION = 1;
+const STORE      = 'docs';
+const WARN_BYTES = 50 * 1024 * 1024; // aviso acima de 50MB por imóvel
+
+/**
+ * openDB()
+ * Abre (ou cria) a base de dados IndexedDB.
+ * onupgradeneeded cria o object store na primeira vez.
+ * Devolve Promise<IDBDatabase>.
+ */
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE, { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+/**
+ * saveDoc(propId, file)
+ * Lê o ficheiro como ArrayBuffer e guarda no IndexedDB.
+ * Usa FileReader para converter File → ArrayBuffer.
+ */
+function saveDoc(propId, file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const docId  = Date.now() + '_' + Math.random().toString(36).slice(2);
+      const key    = `${propId}:${docId}`;
+      const record = { key, propId, docId, name: file.name, size: file.size, type: file.type, added: new Date().toISOString(), data: e.target.result };
+      const tx     = db.transaction(STORE, 'readwrite');
+      const req    = tx.objectStore(STORE).put(record);
+      req.onsuccess = () => res(record);
+      req.onerror   = e => rej(e.target.error);
+    };
+    reader.onerror = () => rej(new Error('Leitura falhou'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/** Devolve todos os docs de um imóvel específico */
+function getDocsForProp(propId) {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = e => res(e.target.result.filter(d => d.propId === propId));
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+/** Apaga um doc pelo seu key composto "propId:docId" */
+function deleteDoc(key) {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).delete(key);
+    req.onsuccess = () => res();
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+/** Obtém um doc pelo key (para visualização/download) */
+function getDoc(key) {
+  return new Promise((res, rej) => {
+    const tx  = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).get(key);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 8: NAVEGAÇÃO — switching entre tabs
+════════════════════════════════════════════════════════════════ */
+
+/**
+ * switchTab(name, btn)
+ * Esconde todos os painéis e activa o painel 'name'.
+ * Algumas tabs têm render lazy (só renderizam quando abertas).
+ */
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('panel-'+name).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
   btn.classList.add('active');
-  if(name==='aru')        renderARU();
-  if(name==='checklists') renderChecklists();
+
+  /* Render lazy — evita re-renderizar tabs que não estão visíveis */
+  if (name === 'inicio')     renderHome();
+  if (name === 'aru')        renderARU();
+  if (name === 'checklists') renderChecklists();
+  if (name === 'tabela')     renderTable();
 }
 
-/* ════════════════════════════════════════════════
-   6. PROPRIEDADES — CRUD
-════════════════════════════════════════════════ */
+/**
+ * goTab(name)
+ * Navega para uma tab pelo nome (usado nos cards da homepage).
+ * Encontra o botão correspondente para activar corretamente.
+ */
+function goTab(name) {
+  const btn = document.querySelector(`.tab-btn[onclick*="'${name}'"]`);
+  if (btn) switchTab(name, btn);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 9: CRUD DE PROPRIEDADES
+════════════════════════════════════════════════════════════════ */
+
+/** Adiciona um novo imóvel (máximo 8) */
 function addProperty() {
-  if(properties.length>=4) return;
-  properties.push({id:nextId++, name:'', selections:{}});
-  saveState(); renderMatrix();
+  if (properties.length >= 8) return;
+  properties.push({ id: nextId++, name: '', selections: {} });
+  saveState();
+  renderMatrix();
 }
+
+/** Remove um imóvel e limpa todos os dados associados */
 function removeProperty(id) {
-  if(properties.length<=1) return;
-  properties = properties.filter(p=>p.id!==id);
-  delete checklists[id]; delete aruData[id];
-  saveState(); renderMatrix();
+  if (properties.length <= 1) return; // mantém sempre pelo menos 1
+  properties = properties.filter(p => p.id !== id);
+  delete checklists[id];
+  delete aruData[id];
+  delete geoCache[id];
+  saveState();
+  renderMatrix();
 }
+
+/** Limpa as selecções de critérios de um imóvel */
 function resetProperty(id) {
-  properties = properties.map(p=>p.id===id?{...p,selections:{}}:p);
-  saveState(); renderMatrix();
+  properties = properties.map(p => p.id === id ? { ...p, selections: {} } : p);
+  saveState();
+  renderMatrix();
 }
-function updateName(id,val) {
-  properties = properties.map(p=>p.id===id?{...p,name:val}:p);
+
+/** Actualiza o nome de um imóvel (chamado no oninput do input) */
+function updateName(id, val) {
+  properties = properties.map(p => p.id === id ? { ...p, name: val } : p);
   saveState();
 }
-function selectOption(propId,critId,optIdx) {
-  properties = properties.map(p=>p.id===propId?{...p,selections:{...p.selections,[critId]:optIdx}}:p);
-  saveState(); renderMatrix();
+
+/**
+ * selectOption(propId, critId, optIdx)
+ * Guarda a selecção de uma opção para um critério.
+ * optIdx é o índice no array options do critério.
+ * Re-renderiza a matriz para actualizar barras e pontuações.
+ */
+function selectOption(propId, critId, optIdx) {
+  properties = properties.map(p =>
+    p.id === propId ? { ...p, selections: { ...p.selections, [critId]: optIdx } } : p
+  );
+  saveState();
+  renderMatrix();
 }
 
-/* ════════════════════════════════════════════════
-   7. CÁLCULO DE PONTUAÇÃO
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 10: CÁLCULO DE PONTUAÇÃO
+   ────────────────────────────────
+   Fórmula:
+     score_total = Σ (score_opção_seleccionada × peso_critério)
+     score_max   = Σ (score_máximo_do_critério × peso_critério)
+     pct = round(score_total / score_max × 100)
+
+   Critérios sem selecção não contribuem para o total,
+   mas o seu máximo ponderado ENTRA no denominador —
+   ou seja, critérios por preencher penalizam a pontuação.
+════════════════════════════════════════════════════════════════ */
 function calcScore(prop) {
-  let total=0, maxTotal=0;
+  let total = 0, maxTotal = 0;
   CRITERIA.forEach(c => {
-    const w=weights[c.id]||0, sel=prop.selections?.[c.id];
-    if(typeof sel==='number') total += c.options[sel].score * w;
+    const w   = weights[c.id] || 0;
+    const sel = prop.selections?.[c.id];
+    if (typeof sel === 'number') total += c.options[sel].score * w;
     maxTotal += MAX_SCORES[c.id] * w;
   });
-  return { pct: maxTotal>0 ? Math.round((total/maxTotal)*100) : 0 };
+  return { pct: maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0 };
 }
 
-/* ════════════════════════════════════════════════
-   8. RENDER: MATRIZ
-════════════════════════════════════════════════ */
-function renderMatrix() {
-  const grid = document.getElementById('properties-grid');
-  const addBtn = document.getElementById('btn-add-prop');
-  addBtn.disabled = properties.length>=4;
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 11: RENDER — HOMEPAGE
+════════════════════════════════════════════════════════════════ */
+function renderHome() {
+  const grid = document.getElementById('home-props-grid');
+  if (!grid) return;
 
-  if(properties.length===0) {
-    grid.innerHTML=`<div class="empty-state"><div class="ei">🏠</div><p>Clica em <strong>+ Adicionar Imóvel</strong> para começar.</p></div>`;
+  if (properties.length === 0) {
+    grid.innerHTML = `<div class="home-prop-empty">Ainda não tens imóveis. Vai à tab <strong>Matriz</strong> para começar.</div>`;
+    return;
+  }
+
+  /* Ordena por pontuação para mostrar o melhor primeiro */
+  const sorted = [...properties].sort((a, b) => calcScore(b).pct - calcScore(a).pct);
+
+  grid.innerHTML = sorted.map(prop => {
+    const { pct }      = calcScore(prop);
+    const colorIdx     = properties.indexOf(prop);
+    const color        = PROP_COLORS[colorIdx] || '#b8975a';
+    const geo          = geoCache[prop.id];
+    const name         = prop.name || `Imóvel ${prop.id}`;
+    const aruStatus    = aruData[prop.id]?.status || 'unknown';
+    const aruLabel     = { yes:'✓ ARU', no:'✗ Fora ARU', unknown:'?' }[aruStatus];
+    const selCount     = Object.keys(prop.selections || {}).length;
+    const totalCrit    = CRITERIA.length;
+
+    // Linha de localização (se geocodificado)
+    let locLine = '';
+    if (geo?.lat) {
+      const parts = [];
+      if (geo.metroDist != null) parts.push(`🚇 ~${Math.max(1,Math.round(geo.metroDist/80))} min`);
+      if (geo.walkScore  != null) parts.push(`🚶 ${geo.walkScore}%`);
+      if (geo.freguesia)          parts.push(`📍 ${escHtml(geo.freguesia)}`);
+      if (parts.length) locLine = `<div class="home-prop-meta" style="margin-top:4px">${parts.join(' · ')}</div>`;
+    }
+
+    return `<div class="home-prop-card" style="--prop-color:${color}" onclick="goTab('matriz')">
+      <div class="home-prop-name">${escHtml(name)}</div>
+      <div class="home-prop-score">${pct}%</div>
+      <div class="home-prop-bar-wrap">
+        <div class="home-prop-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="home-prop-meta">${selCount}/${totalCrit} critérios · ${aruLabel}</div>
+      ${locLine}
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 12: RENDER — MATRIZ
+   ──────────────────────────
+   Constrói os cards de imóvel com:
+   - Input de nome editável
+   - Barra de pontuação total
+   - Pills de localização automática (se geocodificado)
+   - Critérios agrupados com opções clicáveis
+   - Rodapé com botões mapa, docs, ARU pill
+════════════════════════════════════════════════════════════════ */
+function renderMatrix() {
+  const grid   = document.getElementById('properties-grid');
+  const addBtn = document.getElementById('btn-add-prop');
+  addBtn.disabled = properties.length >= 8;
+
+  if (properties.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="ei">🏠</div><p>Clica em <strong>+ Adicionar Imóvel</strong> para começar.</p></div>`;
     return;
   }
 
   grid.innerHTML = properties.map(prop => {
-    const {pct} = calcScore(prop);
-    const aruStatus = aruData[prop.id]?.status||'unknown';
-    const aruLabel  = {yes:'✓ ARU', no:'✗ Fora ARU', unknown:'? ARU'}[aruStatus];
-    const aruClass  = aruStatus;
-    const geo = geoCache[prop.id];
+    const { pct }   = calcScore(prop);
+    const aruStatus = aruData[prop.id]?.status || 'unknown';
+    const aruLabel  = { yes:'✓ ARU', no:'✗ Fora ARU', unknown:'? ARU' }[aruStatus];
+    const geo       = geoCache[prop.id];
+    const colorIdx  = properties.indexOf(prop);
+    const color     = PROP_COLORS[colorIdx] || '#b8975a';
 
-    // Metro distance pill
-    let metroPill = '';
-    if(geo?.metroDist != null) {
-      const d=geo.metroDist, cls=d<400?'good':d<800?'ok':'bad';
-      const mins=Math.max(1,Math.round(d/80));
-      metroPill=`<div class="card-metro-info">
-        <span class="card-metro-pill ${cls}">🚇 ~${mins} min</span>
-        <span style="font-size:.7rem;color:var(--muted)">${escHtml(geo.metroName||'')}</span>
-      </div>`;
+    /* ── Pills de localização automática ── */
+    let locRow = '';
+    if (geo?.lat) {
+      const pills = [];
+      if (geo.metroDist != null) {
+        const d   = geo.metroDist;
+        const cls = d < 400 ? 'metro-good' : d < 800 ? 'metro-ok' : 'metro-bad';
+        const lines = metroLineBadges(geo.metroName || '');
+        pills.push(`<span class="loc-pill ${cls}">${lines}🚇 ~${Math.max(1,Math.round(d/80))} min</span>`);
+      }
+      if (geo.busCount   != null) pills.push(`<span class="loc-pill zone">🚌 ${geo.busCount}</span>`);
+      if (geo.walkScore  != null) {
+        const cls = geo.walkClass === 'good' ? 'metro-good' : geo.walkClass === 'ok' ? 'metro-ok' : 'metro-bad';
+        pills.push(`<span class="loc-pill ${cls}" title="${(geo.walkBreakdown||[]).map(p=>p.emoji+p.count).join(' ')}">🚶 ${geo.walkScore}%</span>`);
+      }
+      if (geo.freguesia) pills.push(`<span class="loc-pill zone" style="font-size:.66rem">📍 ${escHtml(geo.freguesia)}</span>`);
+      if (pills.length)  pills.push(`<span class="loc-pill auto-tag">● auto</span>`);
+      if (pills.length)  locRow = `<div class="card-location-row">${pills.join('')}</div>`;
     }
 
-    // Map button — changes style if already geocoded
-    const mapBtnCls = geo?.lat ? 'btn-map located' : 'btn-map';
-    const mapBtnTxt = geo?.lat ? '📍 Ver no Mapa' : '🗺️ Localizar';
+    /* ── Botão mapa (verde se já geocodificado, azul se não) ── */
+    const mapBtnCls = geo?.lat ? 'btn-chip green' : 'btn-chip blue';
+    const mapBtnTxt = geo?.lat ? '📍 Ver Mapa'    : '🗺️ Localizar';
 
+    /* ── HTML dos critérios agrupados ── */
     const criteriaHtml = CRITERIA_GROUPS.map(grp => {
       const rows = grp.items.map(c => {
-        const opts = c.options.map((opt,i) => {
-          const sel = prop.selections?.[c.id]===i;
-          return `<button class="opt-btn${sel?' selected':''}" onclick="selectOption(${prop.id},'${c.id}',${i})">${opt.label}</button>`;
+        const isAuto = c.autoFill && geo?.lat; // só mostra AUTO se houver dados reais
+        const opts   = c.options.map((opt, i) => {
+          const sel = prop.selections?.[c.id] === i;
+          return `<button class="opt-btn${sel?' selected':''}${isAuto?' auto':''}"
+            onclick="selectOption(${prop.id},'${c.id}',${i})">${opt.label}</button>`;
         }).join('');
-        return `<div><div class="criterion-label">${c.emoji} ${c.name}</div><div class="options-row">${opts}</div></div>`;
+        const autoTag = isAuto ? `<span style="font-size:.6rem;color:var(--blue);margin-left:4px;font-weight:600">AUTO</span>` : '';
+        return `<div>
+          <div class="criterion-label">${c.emoji} ${c.name}${autoTag}</div>
+          <div class="options-row">${opts}</div>
+        </div>`;
       }).join('');
-      return `<div class="grp-divider"><div class="grp-label">${grp.group}</div><div class="criteria-section">${rows}</div></div>`;
+      return `<div class="grp-divider">
+        <div class="grp-label">${grp.group}</div>
+        <div class="criteria-section">${rows}</div>
+      </div>`;
     }).join('');
 
     return `<div class="prop-card">
       <div class="card-header">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
         <input class="prop-name-input" type="text" value="${escHtml(prop.name)}"
           placeholder="Nome do imóvel…" maxlength="40"
           oninput="updateName(${prop.id},this.value)">
@@ -667,30 +1640,35 @@ function renderMatrix() {
         <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${pct}%"></div></div>
         <div class="score-badge">${pct}%</div>
       </div>
-      ${metroPill}
+      ${locRow}
       ${criteriaHtml}
       <div class="card-footer">
         <button class="card-reset" onclick="resetProperty(${prop.id})">↺ Limpar</button>
-        <div style="display:flex;align-items:center;gap:6px">
+        <div class="card-pills">
           <button class="${mapBtnCls}" onclick="openMapModal(${prop.id})">${mapBtnTxt}</button>
-          <span class="aru-pill ${aruClass}">${aruLabel}</span>
+          <button class="btn-chip purple" onclick="openDocsModal(${prop.id})">📁 Docs</button>
+          <span class="aru-pill ${aruStatus}">${aruLabel}</span>
         </div>
       </div>
     </div>`;
   }).join('');
 }
 
-/* ════════════════════════════════════════════════
-   9. RENDER: PESOS
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 13: RENDER — PESOS
+════════════════════════════════════════════════════════════════ */
 function renderWeights() {
   document.getElementById('weights-list').innerHTML = CRITERIA_GROUPS.map(grp => {
     const items = grp.items.map(c => {
-      const w = weights[c.id];
-      const info = c.options.map(o=>`${o.label}=${o.score}pts`).join(' · ');
+      const w      = weights[c.id];
+      const info   = c.options.map(o => `${o.label}=${o.score}pts`).join(' · ');
+      // Marca critérios auto-preenchidos com ponto azul
+      const autoMark = c.autoFill
+        ? `<span style="color:var(--blue);font-size:.7rem;margin-left:5px" title="Auto-preenchido pela geocodificação">● auto</span>`
+        : '';
       return `<div class="weight-item">
         <div class="weight-item-header">
-          <span class="weight-name">${c.emoji} ${c.name}</span>
+          <span class="weight-name">${c.emoji} ${c.name}${autoMark}</span>
           <span class="weight-value-badge" id="wv-${c.id}">×${w}</span>
         </div>
         <input type="range" min="0" max="5" step="1" value="${w}" class="weight-slider"
@@ -701,42 +1679,50 @@ function renderWeights() {
     return `<div class="weights-group-label">${grp.group}</div>${items}`;
   }).join('');
 }
-function updateWeight(id,val) {
-  weights[id]=Number(val);
-  const b=document.getElementById('wv-'+id);
-  if(b) b.textContent='×'+val;
-  saveState(); renderMatrix();
-}
-function resetWeights() {
-  CRITERIA.forEach(c=>weights[c.id]=2);
-  saveState(); renderWeights(); renderMatrix();
+
+/** Actualiza um peso e re-calcula pontuações */
+function updateWeight(id, val) {
+  weights[id] = Number(val);
+  const b = document.getElementById('wv-' + id);
+  if (b) b.textContent = '×' + val;
+  saveState();
+  renderMatrix(); // re-calcula porque os pesos afectam todas as pontuações
 }
 
-/* ════════════════════════════════════════════════
-   10. RENDER: ARU
-════════════════════════════════════════════════ */
+/** Repõe todos os pesos para 2 (valor padrão equilibrado) */
+function resetWeights() {
+  CRITERIA.forEach(c => weights[c.id] = 2);
+  saveState();
+  renderWeights();
+  renderMatrix();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 14: RENDER — ARU
+════════════════════════════════════════════════════════════════ */
 function renderARU() {
   const grid = document.getElementById('aru-cards-grid');
-  if(properties.length===0) {
-    grid.innerHTML=`<div class="empty-state"><div class="ei">🗺️</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
+  if (properties.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="ei">🗺️</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
     return;
   }
   grid.innerHTML = properties.map(prop => {
-    if(!aruData[prop.id]) aruData[prop.id]={status:'unknown',morada:'',benefits:{},note:''};
-    const ad = aruData[prop.id];
+    if (!aruData[prop.id]) aruData[prop.id] = { status:'unknown', morada:'', benefits:{}, note:'' };
+    const ad   = aruData[prop.id];
     const name = prop.name || `Imóvel ${prop.id}`;
 
     const toggles = ['yes','no','unknown'].map(s => {
-      const labels={yes:'✓ Está em ARU',no:'✗ Não está',unknown:'❓ Não sei'};
+      const labels = { yes:'✓ Está em ARU', no:'✗ Não está', unknown:'❓ Não sei' };
       return `<button class="aru-toggle-btn${ad.status===s?' sel-'+s:''}"
         onclick="setARUStatus(${prop.id},'${s}')">${labels[s]}</button>`;
     }).join('');
 
-    const benefitsHtml = ad.status==='yes' ? `
+    // Checklist de benefícios: só visível quando status = 'yes'
+    const benefitsHtml = ad.status === 'yes' ? `
       <div>
         <div class="aru-benefits-title">Benefícios a validar</div>
         ${ARU_BENEFITS.map(b => {
-          const chk=ad.benefits[b.id]||false;
+          const chk = ad.benefits[b.id] || false;
           return `<div class="aru-benefit-item${chk?' checked':''}">
             <input type="checkbox" id="ab-${prop.id}-${b.id}" ${chk?'checked':''}
               onchange="toggleARUBenefit(${prop.id},'${b.id}',this.checked)">
@@ -765,44 +1751,49 @@ function renderARU() {
     </div>`;
   }).join('');
 }
-function setARUStatus(propId,status) {
-  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
-  aruData[propId].status=status;
+
+function setARUStatus(propId, status) {
+  if (!aruData[propId]) aruData[propId] = { status:'unknown', morada:'', benefits:{}, note:'' };
+  aruData[propId].status = status;
   saveState(); renderARU(); renderMatrix();
 }
-function toggleARUBenefit(propId,id,checked) {
-  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
-  aruData[propId].benefits[id]=checked;
-  saveState();
+function toggleARUBenefit(propId, id, checked) {
+  if (!aruData[propId]) aruData[propId] = { status:'unknown', morada:'', benefits:{}, note:'' };
+  aruData[propId].benefits[id] = checked; saveState();
 }
-function updateARUMorada(propId,val) {
-  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
-  aruData[propId].morada=val; saveState();
+function updateARUMorada(propId, val) {
+  if (!aruData[propId]) aruData[propId] = { status:'unknown', morada:'', benefits:{}, note:'' };
+  aruData[propId].morada = val; saveState();
 }
-function updateARUNote(propId,val) {
-  if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
-  aruData[propId].note=val; saveState();
+function updateARUNote(propId, val) {
+  if (!aruData[propId]) aruData[propId] = { status:'unknown', morada:'', benefits:{}, note:'' };
+  aruData[propId].note = val; saveState();
 }
 
-/* ════════════════════════════════════════════════
-   11. RENDER: CHECKLISTS
-════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 15: RENDER — CHECKLISTS
+════════════════════════════════════════════════════════════════ */
 function renderChecklists() {
   const grid = document.getElementById('chk-grid');
-  if(properties.length===0) {
-    grid.innerHTML=`<div class="empty-state"><div class="ei">✅</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
+  if (properties.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="ei">✅</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
     return;
   }
   grid.innerHTML = properties.map(prop => {
-    if(!checklists[prop.id]) checklists[prop.id]={};
+    if (!checklists[prop.id]) checklists[prop.id] = {};
     const pc = checklists[prop.id];
-    let total=0, done=0;
-    CHECKLIST_SECTIONS.forEach(s=>s.items.forEach(i=>{total++;if(pc[s.id]?.[i.id])done++;}));
-    const name = prop.name || `Imóvel ${prop.id}`;
 
+    // Conta itens totais e completos para o badge de progresso
+    let total = 0, done = 0;
+    CHECKLIST_SECTIONS.forEach(s => s.items.forEach(i => {
+      total++;
+      if (pc[s.id]?.[i.id]) done++;
+    }));
+
+    const name     = prop.name || `Imóvel ${prop.id}`;
     const sections = CHECKLIST_SECTIONS.map(sec => {
       const items = sec.items.map(item => {
-        const checked = pc[sec.id]?.[item.id]||false;
+        const checked = pc[sec.id]?.[item.id] || false;
         return `<div class="chk-item${checked?' done':''}">
           <input type="checkbox" id="ci-${prop.id}-${sec.id}-${item.id}" ${checked?'checked':''}
             onchange="toggleCheckItem(${prop.id},'${sec.id}','${item.id}',this.checked)">
@@ -822,224 +1813,589 @@ function renderChecklists() {
     </div>`;
   }).join('');
 }
-function toggleCheckItem(propId,secId,itemId,checked) {
-  if(!checklists[propId]) checklists[propId]={};
-  if(!checklists[propId][secId]) checklists[propId][secId]={};
-  checklists[propId][secId][itemId]=checked;
+
+/**
+ * toggleCheckItem — actualiza um checkbox sem re-renderizar tudo.
+ * Actualiza só o DOM do item e o badge de progresso.
+ */
+function toggleCheckItem(propId, secId, itemId, checked) {
+  if (!checklists[propId])        checklists[propId]       = {};
+  if (!checklists[propId][secId]) checklists[propId][secId] = {};
+  checklists[propId][secId][itemId] = checked;
   saveState();
+
+  // Actualiza classe .done sem re-render completo
   const el = document.querySelector(`#ci-${propId}-${secId}-${itemId}`)?.closest('.chk-item');
-  if(el) el.classList.toggle('done',checked);
-  // Update counter
-  let total=0,done=0;
-  const pc=checklists[propId];
-  CHECKLIST_SECTIONS.forEach(s=>s.items.forEach(i=>{total++;if(pc[s.id]?.[i.id])done++;}));
-  const badge=document.getElementById(`chkprog-${propId}`);
-  if(badge) badge.textContent=`${done}/${total}`;
-}
-function resetChecklist(id) {
-  checklists[id]={}; saveState(); renderChecklists();
-}
-function resetAllChecklists() {
-  checklists={}; saveState(); renderChecklists();
+  if (el) el.classList.toggle('done', checked);
+
+  // Recalcula e actualiza badge de progresso
+  let total = 0, done = 0;
+  CHECKLIST_SECTIONS.forEach(s => s.items.forEach(i => {
+    total++;
+    if (checklists[propId][s.id]?.[i.id]) done++;
+  }));
+  const badge = document.getElementById(`chkprog-${propId}`);
+  if (badge) badge.textContent = `${done}/${total}`;
 }
 
-/* ════════════════════════════════════════════════
-   MAP — Leaflet + Nominatim + Overpass
-════════════════════════════════════════════════ */
+function resetChecklist(id)     { checklists[id] = {}; saveState(); renderChecklists(); }
+function resetAllChecklists()   { checklists = {};     saveState(); renderChecklists(); }
 
-/* ════════════════════════════════════════════════
-   MAP MODAL — Leaflet + Nominatim + Overpass
-════════════════════════════════════════════════ */
-const PROP_COLORS = ['#b8975a','#4a7c59','#1e40af','#c0392b'];
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 16: TABELA COMPARATIVA
+   ─────────────────────────────
+   Gera uma tabela HTML com:
+   - Linha de cabeçalho por imóvel (com cor e medalha de ranking)
+   - Linha de pontuação total com barra visual
+   - Linhas de dados de localização (se geocodificado)
+   - Linhas de critérios agrupadas por categoria
+   - Linha de ARU
+════════════════════════════════════════════════════════════════ */
+function renderTable() {
+  const tbl = document.getElementById('comparison-table');
+  if (!tbl || properties.length === 0) {
+    if (tbl) tbl.innerHTML = '<tr><td style="padding:40px;text-align:center;color:var(--muted)">Adiciona imóveis na Matriz primeiro.</td></tr>';
+    return;
+  }
 
-let modalMap       = null;   // Leaflet instance inside modal
-let modalMapReady  = false;
-let modalPropId    = null;   // which property the modal is showing
-let modalLayers    = {};     // {circle500, circle1000, propMarker, metroMarkers:[]}
-let metroStations  = [];
-let metroLoaded    = false;
+  /* Calcula rankings (1.º, 2.º, 3.º) por pontuação */
+  const scores = properties.map(p => ({ id: p.id, pct: calcScore(p).pct }));
+  const sorted = [...scores].sort((a, b) => b.pct - a.pct);
+  const rank   = {};
+  sorted.forEach((s, i) => rank[s.id] = i + 1);
 
-// Geocoords cache persisted to localStorage
-let geoCache = {};
-try { geoCache = JSON.parse(localStorage.getItem('im2_geo')||'{}'); } catch(e){ geoCache={}; }
-function saveGeo(){ localStorage.setItem('im2_geo', JSON.stringify(geoCache)); }
+  /* ── CABEÇALHO: uma coluna por imóvel ── */
+  const headerCols = properties.map((p, i) => {
+    const color    = PROP_COLORS[i] || '#999';
+    const name     = p.name || `Imóvel ${p.id}`;
+    const geo      = geoCache[p.id];
+    const locLine  = geo?.freguesia ? `<div style="font-size:.7rem;color:var(--muted);font-weight:400;margin-top:1px">📍 ${escHtml(geo.freguesia)}</div>` : '';
+    const rankBadge = rank[p.id] <= 3 ? `<span class="tbl-rank tbl-rank-${rank[p.id]}">${rank[p.id]===1?'🥇':rank[p.id]===2?'🥈':'🥉'}</span>` : '';
+    return `<th style="border-right:1px solid var(--border);min-width:160px">
+      <div class="tbl-prop-header">
+        <span style="width:11px;height:11px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span>
+        ${escHtml(name)} ${rankBadge}
+      </div>
+      ${locLine}
+    </th>`;
+  }).join('');
 
-// ── Open modal for a specific property ────────
+  let html = `<thead><tr><th style="min-width:160px">Critério</th>${headerCols}</tr></thead><tbody>`;
+
+  /* ── LINHA DE PONTUAÇÃO TOTAL ── */
+  html += `<tr class="tbl-score-row">
+    <td>⭐ Pontuação Total</td>
+    ${properties.map(p => {
+      const { pct } = calcScore(p);
+      return `<td style="border-right:1px solid var(--border)">
+        <div style="font-size:1rem;font-weight:800;color:var(--gold-dk)">${pct}%</div>
+        <div class="tbl-score-bar"><div class="tbl-score-bar-fill" style="width:${pct}%"></div></div>
+      </td>`;
+    }).join('')}
+  </tr>`;
+
+  /* ── LINHAS DE LOCALIZAÇÃO (só se algum imóvel tiver coordenadas) ── */
+  const hasGeo = properties.some(p => geoCache[p.id]?.lat);
+  if (hasGeo) {
+    html += `<tr class="tbl-grp-header"><td colspan="${properties.length+1}">Localização (auto)</td></tr>`;
+    const locRows = [
+      { label:'🚇 Metro',      fn: g => g?.metroDist != null ? `${escHtml(g.metroName||'')} · ~${Math.max(1,Math.round(g.metroDist/80))} min` : null },
+      { label:'🚌 Transportes',fn: g => g?.busCount  != null ? `${g.busCount} paragens 500m` : null },
+      { label:'🚶 Walkability', fn: g => g?.walkScore != null ? `${g.walkScore}% — ${escHtml(g.walkLabel||'')}` : null },
+      { label:'📍 Freguesia',  fn: g => g?.freguesia  ? escHtml(g.freguesia) : null },
+    ];
+    locRows.forEach(row => {
+      html += `<tr><td>${row.label}</td>`;
+      properties.forEach(p => {
+        const val = row.fn(geoCache[p.id]);
+        html += `<td style="border-right:1px solid var(--border)">${val ? `<span style="font-weight:600">${val}</span>` : `<span style="color:#c0b8b0;font-style:italic">—</span>`}</td>`;
+      });
+      html += '</tr>';
+    });
+  }
+
+  /* ── LINHAS DE CRITÉRIOS ── */
+  CRITERIA_GROUPS.forEach(grp => {
+    html += `<tr class="tbl-grp-header"><td colspan="${properties.length+1}">${grp.group}</td></tr>`;
+    grp.items.forEach(c => {
+      const autoTag = c.autoFill ? `<span class="tbl-auto-dot" title="Auto-preenchido"></span>` : '';
+      html += `<tr><td>${c.emoji} ${c.name}${autoTag}</td>`;
+      properties.forEach(p => {
+        const sel   = p.selections?.[c.id];
+        const label = typeof sel === 'number' ? c.options[sel].label : null;
+        html += `<td style="border-right:1px solid var(--border)">${label ? `<span style="font-weight:600">${label}</span>` : `<span style="color:#c0b8b0;font-style:italic">—</span>`}</td>`;
+      });
+      html += '</tr>';
+    });
+  });
+
+  /* ── LINHA ARU ── */
+  html += `<tr class="tbl-grp-header"><td colspan="${properties.length+1}">ARU</td></tr>`;
+  html += `<tr><td>🗺️ ARU</td>`;
+  properties.forEach(p => {
+    const s   = aruData[p.id]?.status || 'unknown';
+    const lbl = { yes:'✓ Está', no:'✗ Não', unknown:'?' }[s];
+    const col = s === 'yes' ? 'var(--green)' : s === 'no' ? 'var(--muted)' : 'var(--gold-dk)';
+    html += `<td style="border-right:1px solid var(--border);color:${col};font-weight:600">${lbl}</td>`;
+  });
+  html += '</tr></tbody>';
+
+  tbl.innerHTML = html;
+}
+
+/**
+ * exportCSV()
+ * Gera um ficheiro CSV com BOM UTF-8 (para abrir correctamente no Excel PT).
+ * Usa URL.createObjectURL para download sem servidor.
+ */
+function exportCSV() {
+  if (!properties.length) return;
+  const rows = [];
+  rows.push(['Critério', ...properties.map(p => p.name || `Imóvel ${p.id}`)]);
+  rows.push(['Pontuação Total', ...properties.map(p => calcScore(p).pct + '%')]);
+  if (properties.some(p => geoCache[p.id]?.lat)) {
+    rows.push(['Metro',         ...properties.map(p => { const g = geoCache[p.id]; return g?.metroDist != null ? `${g.metroName} ~${Math.max(1,Math.round(g.metroDist/80))}min` : ''; })]);
+    rows.push(['Transportes',   ...properties.map(p => geoCache[p.id]?.busCount  ?? '')]);
+    rows.push(['Walkability',   ...properties.map(p => geoCache[p.id]?.walkScore != null ? `${geoCache[p.id].walkScore}%` : '')]);
+    rows.push(['Freguesia',     ...properties.map(p => geoCache[p.id]?.freguesia || '')]);
+  }
+  CRITERIA_GROUPS.forEach(grp => {
+    rows.push([grp.group, ...properties.map(() => '')]);
+    grp.items.forEach(c => {
+      rows.push([`${c.emoji} ${c.name}`, ...properties.map(p => {
+        const sel = p.selections?.[c.id];
+        return typeof sel === 'number' ? c.options[sel].label : '';
+      })]);
+    });
+  });
+  rows.push(['ARU', ...properties.map(p => ({ yes:'Sim', no:'Não', unknown:'?' })[aruData[p.id]?.status || 'unknown'])]);
+
+  const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'imoveis_comparacao.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * copyTableToClipboard()
+ * Copia como TSV (Tab-Separated Values) para o clipboard.
+ * Ao colar no Excel/Google Sheets, cada coluna fica separada automaticamente.
+ */
+function copyTableToClipboard() {
+  if (!properties.length) return;
+  const rows = [];
+  rows.push(['Critério', ...properties.map(p => p.name || `Imóvel ${p.id}`)]);
+  rows.push(['Pontuação Total', ...properties.map(p => calcScore(p).pct + '%')]);
+  if (properties.some(p => geoCache[p.id]?.lat)) {
+    rows.push(['Metro',       ...properties.map(p => { const g=geoCache[p.id]; return g?.metroDist!=null?`${g.metroName} ~${Math.max(1,Math.round(g.metroDist/80))}min`:'—'; })]);
+    rows.push(['Transportes', ...properties.map(p => geoCache[p.id]?.busCount!=null?geoCache[p.id].busCount+' paragens':'—')]);
+    rows.push(['Walkability', ...properties.map(p => geoCache[p.id]?.walkScore!=null?`${geoCache[p.id].walkScore}% ${geoCache[p.id].walkLabel}`:'—')]);
+    rows.push(['Freguesia',   ...properties.map(p => geoCache[p.id]?.freguesia||'—')]);
+  }
+  CRITERIA_GROUPS.forEach(grp => {
+    rows.push([grp.group, ...properties.map(() => '')]);
+    grp.items.forEach(c => {
+      rows.push([`${c.emoji} ${c.name}`, ...properties.map(p => {
+        const sel = p.selections?.[c.id];
+        return typeof sel === 'number' ? c.options[sel].label : '—';
+      })]);
+    });
+  });
+  rows.push(['ARU', ...properties.map(p => ({ yes:'Sim', no:'Não', unknown:'?' })[aruData[p.id]?.status||'unknown'])]);
+
+  const tsv = rows.map(r => r.join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    const msg = document.getElementById('table-copy-msg');
+    msg.textContent = '✓ Copiado! Cola directamente no Excel ou Google Sheets (Ctrl+V / Cmd+V).';
+    setTimeout(() => msg.textContent = '', 4000);
+  }).catch(() => alert('Não foi possível copiar. Tenta exportar CSV.'));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 17: MAP MODAL — Leaflet + Nominatim + Overpass API
+   ───────────────────────────────────────────────────────────
+   Fluxo ao clicar "Localizar":
+   1. geocodeModal() — Nominatim converte morada → coordenadas
+   2. Em paralelo:
+      a. fetchReverseGeocode() — Nominatim devolve freguesia
+      b. fetchBusStops()       — Overpass conta paragens 500m
+      c. fetchWalkability()    — Overpass conta POIs 500m
+      d. calcNearestMetro()    — calcula distância às estações
+   3. Todos os resultados actualizam geoCache[propId]
+   4. Critérios 'metro' e 'transportes' são auto-seleccionados
+   5. renderMatrix() actualiza os cards com os novos dados
+════════════════════════════════════════════════════════════════ */
+
+let modalMap      = null;    // instância Leaflet (criada uma vez, reutilizada)
+let modalMapReady = false;   // flag para evitar múltiplas inicializações
+let modalPropId   = null;    // qual imóvel está aberto no modal
+
+/* Camadas do mapa (guardadas para poder limpar antes de redraw) */
+let modalPropMarker  = null;
+let modalCircle500   = null;
+let modalCircle1000  = null;
+let metroStations    = [];    // array de {name, lat, lng}
+let metroLoaded      = false;
+let metroMarkers     = [];    // marcadores Leaflet das estações de metro
+let busMarkers       = [];    // marcadores Leaflet das paragens de autocarro
+
+/**
+ * openMapModal(propId)
+ * Abre o modal do mapa para um imóvel específico.
+ * Inicializa o Leaflet na primeira chamada.
+ */
 function openMapModal(propId) {
   modalPropId = propId;
-  const prop  = properties.find(p=>p.id===propId);
-  const geo   = geoCache[propId];
-  const name  = prop?.name || `Imóvel ${propId}`;
-  const colorIdx = properties.findIndex(p=>p.id===propId);
-  const color = PROP_COLORS[colorIdx]||'#b8975a';
+  const prop      = properties.find(p => p.id === propId);
+  const geo       = geoCache[propId];
+  const name      = prop?.name || `Imóvel ${propId}`;
+  const colorIdx  = properties.findIndex(p => p.id === propId);
+  const color     = PROP_COLORS[colorIdx] || '#b8975a';
 
-  // Set header
-  document.getElementById('modal-prop-dot').style.background = color;
-  document.getElementById('modal-prop-name').textContent = name;
-  document.getElementById('modal-prop-meta').textContent = geo ? `· ${geo.address}` : '';
+  /* Actualiza cabeçalho do modal */
+  document.getElementById('modal-prop-dot').style.background  = color;
+  document.getElementById('modal-prop-name').textContent      = name;
+  document.getElementById('modal-prop-meta').textContent      = geo ? `· ${geo.address}` : '';
+  document.getElementById('modal-addr-input').value           = geo?.address || aruData[propId]?.morada || '';
+  document.getElementById('modal-status').textContent         = '';
+  document.getElementById('modal-status').className           = 'map-status';
+  document.getElementById('modal-auto-pills').innerHTML       = '';
 
-  // Pre-fill address input
-  const addrInput = document.getElementById('modal-addr-input');
-  addrInput.value = geo?.address || aruData[propId]?.morada || '';
+  /* Mostra overlay */
+  document.getElementById('map-modal-overlay').style.display  = 'flex';
+  document.body.style.overflow = 'hidden'; // evita scroll de fundo
 
-  // Reset status
-  const statusEl = document.getElementById('modal-status');
-  const badgeEl  = document.getElementById('modal-metro-badge');
-  statusEl.textContent = '';
-  statusEl.className   = 'map-status';
-  badgeEl.style.display= 'none';
-
-  // Show modal
-  const overlay = document.getElementById('map-modal-overlay');
-  overlay.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-
-  // Init Leaflet once (reuse instance — just clear layers & resize)
-  if(!modalMapReady) {
-    modalMap = L.map('modal-map', {zoomControl:true}).setView([38.716,-9.142],14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom:19
+  /* Inicializa Leaflet (só na primeira abertura) */
+  if (!modalMapReady) {
+    modalMap = L.map('modal-map', { zoomControl: true }).setView([38.716, -9.142], 14);
+    /* Tiles OpenStreetMap — gratuitos, sem API key */
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
     }).addTo(modalMap);
     modalMapReady = true;
-    loadMetroStations(); // async: loads metro pins
+    loadMetroStations(); // carrega estações em background (async)
   }
 
-  // Refresh map size after display:flex renders
-  setTimeout(()=>{ modalMap.invalidateSize(); }, 80);
+  /* invalidateSize() necessário porque o mapa estava em display:none */
+  setTimeout(() => modalMap.invalidateSize(), 80);
 
-  // If property already geocoded, show it immediately
-  if(geo?.lat) {
+  /* Se já geocodificado, mostra imediatamente */
+  if (geo?.lat) {
     renderPropModal(propId, false);
-    showMetroBadge(propId);
+    renderAutoPills(propId);
+    renderBusStopsOnMap(propId); // re-renderiza paragens de autocarro
   } else {
-    // Reset to Lisboa centre
-    modalMap.setView([38.716,-9.142],13);
+    modalMap.setView([38.716, -9.142], 13);
   }
 }
 
-// ── Close modal ────────────────────────────────
+/** Fecha o modal do mapa (event: clique no overlay exterior) */
 function closeMapModal(event) {
-  // Close only if clicking overlay (not the modal itself) or explicit call
-  if(event && event.target !== document.getElementById('map-modal-overlay')) return;
+  if (event && event.target !== document.getElementById('map-modal-overlay')) return;
   document.getElementById('map-modal-overlay').style.display = 'none';
   document.body.style.overflow = '';
 }
-// Close on Escape
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeMapModal(); });
 
-// ── Geocode the address in the modal ──────────
+/* Fecha qualquer modal ao pressionar Escape */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeMapModal(); closeDocsModal(); closePdfViewer(); }
+});
+
+/**
+ * geocodeModal()
+ * Converte a morada escrita → coordenadas via Nominatim,
+ * depois lança em paralelo as 4 chamadas de enriquecimento.
+ */
 async function geocodeModal() {
-  if(!modalPropId) return;
+  if (!modalPropId) return;
   const addr = document.getElementById('modal-addr-input').value.trim();
   const btn  = document.getElementById('modal-geocode-btn');
-  const statusEl = document.getElementById('modal-status');
-
-  if(!addr){ setModalStatus('Insere uma morada.','error'); return; }
+  if (!addr) { setModalStatus('Insere uma morada.', 'error'); return; }
 
   btn.disabled = true;
-  setModalStatus('A procurar…','');
+  setModalStatus('A procurar…', '');
 
   try {
+    /* Nominatim Search API — devolve JSON com coordenadas */
     const q   = encodeURIComponent(addr + ', Lisboa, Portugal');
-    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=pt`;
-    const res = await fetch(url, { headers:{'Accept-Language':'pt','User-Agent':'MatrizImoveis/1.0'} });
-    const data= await res.json();
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=pt`,
+      { headers: { 'Accept-Language': 'pt', 'User-Agent': 'MatrizImoveis/1.0' } }
+    );
+    const data = await res.json();
 
-    if(!data || data.length===0){
-      setModalStatus('Morada não encontrada. Tenta ser mais específico.','error');
-      btn.disabled=false; return;
+    if (!data || data.length === 0) {
+      setModalStatus('Morada não encontrada. Tenta ser mais específico.', 'error');
+      btn.disabled = false; return;
     }
 
-    const {lat,lon} = data[0];
-    geoCache[modalPropId] = { lat:parseFloat(lat), lng:parseFloat(lon), address:addr };
-    saveGeo();
+    const { lat, lon } = data[0];
+    /* Guarda coordenadas base no cache */
+    geoCache[modalPropId] = { lat: parseFloat(lat), lng: parseFloat(lon), address: addr };
 
-    // Sync address to ARU tab
-    if(!aruData[modalPropId]) aruData[modalPropId]={status:'unknown',morada:'',benefits:{},note:''};
+    /* Sincroniza morada para a tab ARU */
+    if (!aruData[modalPropId]) aruData[modalPropId] = { status:'unknown', morada:'', benefits:{}, note:'' };
     aruData[modalPropId].morada = addr;
     saveState();
 
-    setModalStatus('✓ Localizado','success');
-    renderPropModal(modalPropId, true);
+    setModalStatus('✓ Localizado — a calcular transportes e walkability…', 'success');
+    renderPropModal(modalPropId, true); // mostra pin no mapa
+    modalMap.flyTo([geoCache[modalPropId].lat, geoCache[modalPropId].lng], 15, { duration: 1.1 });
 
-    // Update matrix card metro info + score after metro calc
-    if(metroLoaded) { calcNearestMetro(modalPropId); }
+    /* 4 chamadas em paralelo para não bloquear a UI */
+    await Promise.all([
+      fetchReverseGeocode(modalPropId),                                            // → freguesia
+      fetchBusStops(modalPropId),                                                  // → paragens + score transportes
+      fetchWalkability(modalPropId),                                               // → POIs + score walk
+      metroLoaded ? Promise.resolve(calcNearestMetro(modalPropId)) : Promise.resolve() // → distância metro
+    ]);
+
+    renderAutoPills(modalPropId);
+    setModalStatus('✓ Critérios de localização actualizados automaticamente', 'success');
+    renderMatrix(); // actualiza cards com novos dados auto
 
   } catch(e) {
-    setModalStatus('Erro de ligação. Tenta novamente.','error');
+    setModalStatus('Erro de ligação. Verifica a internet.', 'error');
   }
   btn.disabled = false;
 }
 
+/** Actualiza a mensagem de status no modal */
 function setModalStatus(msg, cls) {
   const el = document.getElementById('modal-status');
   el.textContent = msg;
-  el.className = 'map-status' + (cls?' '+cls:'');
+  el.className   = 'map-status' + (cls ? ' ' + cls : '');
 }
 
-// ── Render property pin + circles on modal map ─
+/**
+ * fetchReverseGeocode(propId)
+ * Usa Nominatim Reverse para obter a freguesia a partir de coordenadas.
+ * zoom=14 devolve o nível de detalhe de bairro/freguesia.
+ */
+async function fetchReverseGeocode(propId) {
+  const geo = geoCache[propId]; if (!geo) return;
+  try {
+    const url  = `https://nominatim.openstreetmap.org/reverse?lat=${geo.lat}&lon=${geo.lng}&format=json&zoom=14&accept-language=pt`;
+    const res  = await fetch(url, { headers: { 'User-Agent': 'MatrizImoveis/1.0' } });
+    const data = await res.json();
+    const addr = data.address || {};
+    /* Tenta vários campos do OSM pela ordem de precisão */
+    geoCache[propId].freguesia = addr.suburb || addr.quarter || addr.neighbourhood || addr.city_district || addr.village || '';
+    saveState();
+  } catch(e) {}
+}
+
+/**
+ * fetchBusStops(propId)
+ * Overpass API: conta paragens de autocarro e eléctrico num raio de 500m.
+ * Usa o resultado para auto-seleccionar o critério "Transportes Públicos".
+ */
+async function fetchBusStops(propId) {
+  const geo = geoCache[propId]; if (!geo) return;
+  try {
+    const query = `[out:json][timeout:12];
+      (node["highway"="bus_stop"](around:500,${geo.lat},${geo.lng});
+       node["railway"="tram_stop"](around:500,${geo.lat},${geo.lng});
+       node["amenity"="bus_station"](around:500,${geo.lat},${geo.lng}););
+      out body;`;
+    const res  = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+    const data = await res.json();
+    const stops = (data.elements || []).map(e => ({
+      lat:  e.lat, lng: e.lon,
+      name: e.tags?.name || e.tags?.ref || 'Paragem',
+      type: e.tags?.railway === 'tram_stop' ? 'tram' : 'bus'
+    }));
+    geoCache[propId].busCount = stops.length;
+    geoCache[propId].busStops = stops;
+    saveState();
+    /* Escala: >8 paragens = Excelentes, 4-8 = Bons, 1-3 = Médios, 0 = Maus */
+    const tIdx = stops.length > 8 ? 3 : stops.length >= 4 ? 2 : stops.length >= 1 ? 1 : 0;
+    selectOption(propId, 'transportes', tIdx);
+    renderBusStopsOnMap(propId); // adiciona marcadores ao mapa
+  } catch(e) { geoCache[propId].busCount = 0; saveState(); }
+}
+
+/**
+ * fetchWalkability(propId)
+ * Overpass API: numa única query, conta POIs de 10 categorias num raio de 500m.
+ * Calcula score 0-100% baseado em pesos por categoria.
+ * Score alto = bairro caminhável com serviços próximos.
+ */
+async function fetchWalkability(propId) {
+  const geo = geoCache[propId]; if (!geo) return;
+
+  /* Categorias de POI relevantes para walkability urbana */
+  const POI_CATEGORIES = [
+    { tag:'amenity=cafe',       label:'Cafés',        emoji:'☕', max:5 },
+    { tag:'amenity=restaurant', label:'Restaurantes', emoji:'🍽️', max:5 },
+    { tag:'shop=supermarket',   label:'Supermercado', emoji:'🛒', max:2 },
+    { tag:'shop=convenience',   label:'Mercearia',    emoji:'🏪', max:3 },
+    { tag:'amenity=pharmacy',   label:'Farmácias',    emoji:'💊', max:2 },
+    { tag:'amenity=school',     label:'Escolas',      emoji:'🏫', max:2 },
+    { tag:'leisure=park',       label:'Parques',      emoji:'🌳', max:2 },
+    { tag:'amenity=bank',       label:'Bancos/ATM',   emoji:'🏦', max:2 },
+    { tag:'amenity=doctors',    label:'Médicos',      emoji:'🩺', max:1 },
+    { tag:'shop=bakery',        label:'Padarias',     emoji:'🥐', max:3 },
+  ];
+
+  try {
+    /* Uma query só para todas as categorias (mais eficiente que 10 queries) */
+    const parts = POI_CATEGORIES.map(c => {
+      const [k, v] = c.tag.split('=');
+      return `node["${k}"="${v}"](around:500,${geo.lat},${geo.lng});`;
+    });
+    const query = `[out:json][timeout:15];(${parts.join('')});out body;`;
+    const res   = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+    const data  = await res.json();
+    const elements = data.elements || [];
+
+    /* Conta por categoria e calcula score ponderado */
+    let totalScore = 0, maxScore = 0;
+    const breakdown = [];
+    POI_CATEGORIES.forEach(cat => {
+      const [k, v] = cat.tag.split('=');
+      const count  = elements.filter(e => e.tags?.[k] === v).length;
+      const capped = Math.min(count, cat.max); // limita para não deixar 1 categoria dominar
+      totalScore += capped;
+      maxScore   += cat.max;
+      if (count > 0) breakdown.push({ emoji: cat.emoji, label: cat.label, count });
+    });
+
+    const walkPct   = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+    const walkLabel = walkPct >= 80 ? 'Excelente' : walkPct >= 55 ? 'Bom' : walkPct >= 30 ? 'Razoável' : 'Limitado';
+    const walkClass = walkPct >= 80 ? 'good'      : walkPct >= 55 ? 'ok'  : 'bad';
+
+    geoCache[propId].walkScore     = walkPct;
+    geoCache[propId].walkLabel     = walkLabel;
+    geoCache[propId].walkClass     = walkClass;
+    geoCache[propId].walkBreakdown = breakdown.slice(0, 6); // top 6 para não encher o tooltip
+    geoCache[propId].poiCount      = elements.length;
+    saveState();
+  } catch(e) {
+    geoCache[propId].walkScore = null;
+    saveState();
+  }
+}
+
+/**
+ * renderBusStopsOnMap(propId)
+ * Adiciona marcadores quadrados azuis para paragens de autocarro/eléctrico.
+ * Remove os marcadores anteriores primeiro (para evitar duplicação).
+ */
+function renderBusStopsOnMap(propId) {
+  busMarkers.forEach(m => modalMap.removeLayer(m));
+  busMarkers = [];
+  const stops = geoCache[propId]?.busStops || [];
+  const busIcon = L.divIcon({
+    html: `<div style="width:11px;height:11px;background:#0ea5e9;border:2px solid #fff;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
+    iconSize: [11,11], iconAnchor: [5,5], className: ''
+  });
+  stops.forEach(s => {
+    const m = L.marker([s.lat, s.lng], { icon: busIcon })
+      .addTo(modalMap)
+      .bindTooltip(`${s.type === 'tram' ? '🚃' : '🚌'} ${s.name}`, { permanent: false, direction: 'top' });
+    busMarkers.push(m);
+  });
+}
+
+/**
+ * renderAutoPills(propId)
+ * Actualiza as pills de resultados automáticos no header do modal do mapa.
+ * Chamada depois de cada operação de geocodificação/enriquecimento.
+ */
+function renderAutoPills(propId) {
+  const geo = geoCache[propId]; if (!geo) return;
+  const pills = [];
+
+  if (geo.metroDist != null) {
+    const d    = geo.metroDist;
+    const cls  = d < 400 ? 'metro-good' : d < 800 ? 'metro-ok' : 'metro-bad';
+    const mins = Math.max(1, Math.round(d / 80)); // ~80m/min a pé
+    const lines = metroLineBadges(geo.metroName || '');
+    pills.push(`<span class="map-auto-pill ${cls}">🚇 ${lines}${escHtml(geo.metroName||'Metro')} · ~${mins} min (${Math.round(d)} m)</span>`);
+  }
+  if (geo.busCount != null) {
+    pills.push(`<span class="map-auto-pill transit">🚌 ${geo.busCount} paragens 500m</span>`);
+  }
+  if (geo.walkScore != null) {
+    const cls       = geo.walkClass === 'good' ? 'metro-good' : geo.walkClass === 'ok' ? 'metro-ok' : 'metro-bad';
+    const breakdown = (geo.walkBreakdown || []).map(p => `${p.emoji}${p.count}`).join(' ');
+    pills.push(`<span class="map-auto-pill ${cls}" title="${breakdown}">🚶 Walk ${geo.walkScore}% — ${escHtml(geo.walkLabel||'')}${breakdown ? ' ('+breakdown+')' : ''}</span>`);
+  }
+  if (geo.freguesia) {
+    pills.push(`<span class="map-auto-pill zone">📍 ${escHtml(geo.freguesia)}</span>`);
+  }
+
+  document.getElementById('modal-auto-pills').innerHTML = pills.join('');
+}
+
+/**
+ * renderPropModal(propId, flyTo)
+ * Coloca o pin do imóvel e os dois círculos de raio no mapa Leaflet.
+ * flyTo: true = animação de zoom, false = setView imediato.
+ */
 function renderPropModal(propId, flyTo) {
-  const geo   = geoCache[propId];
-  if(!geo||!modalMap) return;
-  const colorIdx = properties.findIndex(p=>p.id===propId);
-  const color = PROP_COLORS[colorIdx]||'#b8975a';
-  const name  = properties.find(p=>p.id===propId)?.name||`Imóvel ${propId}`;
+  const geo = geoCache[propId]; if (!geo || !modalMap) return;
+  const colorIdx = properties.findIndex(p => p.id === propId);
+  const color    = PROP_COLORS[colorIdx] || '#b8975a';
+  const name     = properties.find(p => p.id === propId)?.name || `Imóvel ${propId}`;
 
-  // Clear previous prop layers (not metro markers)
-  if(modalLayers.propMarker) modalMap.removeLayer(modalLayers.propMarker);
-  if(modalLayers.circle500)  modalMap.removeLayer(modalLayers.circle500);
-  if(modalLayers.circle1000) modalMap.removeLayer(modalLayers.circle1000);
+  /* Remove camadas anteriores */
+  if (modalPropMarker) modalMap.removeLayer(modalPropMarker);
+  if (modalCircle500)  modalMap.removeLayer(modalCircle500);
+  if (modalCircle1000) modalMap.removeLayer(modalCircle1000);
 
-  // Property pin — teardrop style
+  /* Pin estilo "teardrop" com cor do imóvel */
   const icon = L.divIcon({
-    html:`<div style="width:26px;height:26px;background:${color};border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.4)"><div style="width:8px;height:8px;background:#fff;border-radius:50%;position:absolute;top:5px;left:5px"></div></div>`,
-    iconSize:[26,26], iconAnchor:[13,26], popupAnchor:[0,-26], className:''
+    html: `<div style="width:26px;height:26px;background:${color};border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.4)"><div style="width:8px;height:8px;background:#fff;border-radius:50%;position:absolute;top:5px;left:5px"></div></div>`,
+    iconSize: [26,26], iconAnchor: [13,26], popupAnchor: [0,-26], className: ''
   });
 
-  const marker = L.marker([geo.lat,geo.lng],{icon})
+  modalPropMarker = L.marker([geo.lat, geo.lng], { icon })
     .addTo(modalMap)
-    .bindPopup(`<strong style="font-family:'Playfair Display',serif;font-size:.92rem">${escHtml(name)}</strong><br><span style="font-size:.76rem;color:#666">${escHtml(geo.address||'')}</span>`, {maxWidth:220})
+    .bindPopup(`<strong style="font-family:'Playfair Display',serif">${escHtml(name)}</strong><br><span style="font-size:.76rem;color:#666">${escHtml(geo.address||'')}</span>`, { maxWidth: 220 })
     .openPopup();
 
-  // 500 m ring — gold
-  const c500 = L.circle([geo.lat,geo.lng],{
-    radius:500, color:color, fillColor:color,
-    fillOpacity:.06, weight:2, dashArray:'7 5'
-  }).addTo(modalMap)
-    .bindTooltip('500 m',{permanent:false,direction:'right'});
+  /* Círculo dourado 500m */
+  modalCircle500 = L.circle([geo.lat, geo.lng], {
+    radius: 500, color: color, fillColor: color,
+    fillOpacity: .06, weight: 2, dashArray: '7 5'
+  }).addTo(modalMap).bindTooltip('500 m', { direction: 'right' });
 
-  // 1 km ring — blue tint
-  const c1000 = L.circle([geo.lat,geo.lng],{
-    radius:1000, color:'#1e40af', fillColor:'#1e40af',
-    fillOpacity:.03, weight:1.5, dashArray:'10 7'
-  }).addTo(modalMap)
-    .bindTooltip('1 km',{permanent:false,direction:'right'});
+  /* Círculo azul 1km */
+  modalCircle1000 = L.circle([geo.lat, geo.lng], {
+    radius: 1000, color: '#1e40af', fillColor: '#1e40af',
+    fillOpacity: .03, weight: 1.5, dashArray: '10 7'
+  }).addTo(modalMap).bindTooltip('1 km', { direction: 'right' });
 
-  modalLayers.propMarker = marker;
-  modalLayers.circle500  = c500;
-  modalLayers.circle1000 = c1000;
-
-  if(flyTo) modalMap.flyTo([geo.lat,geo.lng],15,{duration:1.1});
-  else      modalMap.setView([geo.lat,geo.lng],15);
+  if (flyTo) modalMap.flyTo([geo.lat, geo.lng], 15, { duration: 1.1 });
+  else       modalMap.setView([geo.lat, geo.lng], 15);
 }
 
-// ── Load metro stations (Overpass, fallback hardcoded) ──
+/**
+ * loadMetroStations()
+ * Tenta carregar estações via Overpass API.
+ * Em caso de erro (timeout, sem rede), usa lista hardcoded como fallback.
+ * Após carregar, adiciona marcadores ao mapa e calcula distâncias.
+ */
 async function loadMetroStations() {
   try {
-    const query=`[out:json][timeout:15];node["station"="subway"](38.65,-9.25,38.80,-9.08);out body;`;
-    const res = await fetch('https://overpass-api.de/api/interpreter',{
-      method:'POST', body:'data='+encodeURIComponent(query)
-    });
-    const data = await res.json();
-    if(data.elements?.length>0){
-      metroStations = data.elements.map(e=>({
-        id:e.id, lat:e.lat, lng:e.lon,
-        name:e.tags?.name||e.tags?.['name:pt']||'Metro'
+    const query = `[out:json][timeout:15];node["station"="subway"](38.65,-9.25,38.80,-9.08);out body;`;
+    const res   = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(query) });
+    const data  = await res.json();
+    if (data.elements?.length > 0) {
+      metroStations = data.elements.map(e => ({
+        id:   e.id,
+        lat:  e.lat,
+        lng:  e.lon,
+        name: e.tags?.name || e.tags?.['name:pt'] || 'Metro'
       }));
-    } else { throw new Error('no data'); }
+    } else throw new Error('Resposta vazia');
   } catch(e) {
-    // Hardcoded fallback — todas as estações do Metro de Lisboa
+    /* Fallback: coordenadas hardcoded de todas as estações do Metro de Lisboa */
     metroStations = [
       {name:'Aeroporto',lat:38.7701,lng:-9.1282},{name:'Encarnação',lat:38.7668,lng:-9.1279},
       {name:'Odivelas',lat:38.7893,lng:-9.1789},{name:'Senhor Roubado',lat:38.7773,lng:-9.1719},
@@ -1066,469 +2422,286 @@ async function loadMetroStations() {
       {name:'Entrecampos',lat:38.7421,lng:-9.1530},
     ];
   }
+
   metroLoaded = true;
 
-  // Add metro pins to modal map
-  const metroIcon = L.divIcon({
-    html:`<div style="width:13px;height:13px;background:#e8253d;border:2.5px solid #fff;border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,.4)"></div>`,
-    iconSize:[13,13], iconAnchor:[6,6], className:''
+  /* Ícone de metro: círculo vermelho com borda branca */
+  const mIcon = L.divIcon({
+    html: `<div style="width:13px;height:13px;background:#e8253d;border:2.5px solid #fff;border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,.4)"></div>`,
+    iconSize: [13,13], iconAnchor: [6,6], className: ''
   });
-  modalLayers.metroMarkers = [];
-  metroStations.forEach(s=>{
-    const m = L.marker([s.lat,s.lng],{icon:metroIcon})
+
+  /* Adiciona marcadores com tooltip de nome + badges de linha */
+  metroStations.forEach(s => {
+    const lines = (METRO_LINES_MAP[s.name] || []).map(l =>
+      `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${METRO_LINE_COLORS[l]};border:1px solid rgba(0,0,0,.2);margin-right:2px"></span>`
+    ).join('');
+    const m = L.marker([s.lat, s.lng], { icon: mIcon })
       .addTo(modalMap)
-      .bindTooltip(`🚇 ${s.name}`,{permanent:false,direction:'top',className:'metro-tip'});
-    modalLayers.metroMarkers.push(m);
+      .bindTooltip(`<span style="display:flex;align-items:center;gap:4px">${lines}🚇 <b>${s.name}</b></span>`, { permanent: false, direction: 'top' });
+    metroMarkers.push(m);
   });
 
-  // Recalc for any already-geocoded property open in modal
-  if(modalPropId && geoCache[modalPropId]?.lat) {
+  /* Recalcula para o imóvel actualmente aberto */
+  if (modalPropId && geoCache[modalPropId]?.lat) {
     calcNearestMetro(modalPropId);
+    renderAutoPills(modalPropId);
   }
-  // Recalc for all geocoded properties (updates matrix scores)
-  Object.keys(geoCache).forEach(pid=>{
-    if(geoCache[pid]?.lat) calcNearestMetro(Number(pid));
+  /* Recalcula para todos os imóveis já geocodificados (em background) */
+  Object.keys(geoCache).forEach(pid => {
+    if (geoCache[pid]?.lat) calcNearestMetro(Number(pid));
   });
 }
 
-// ── Haversine distance (metres) ────────────────
-function haversine(a,b,c,d){
-  const R=6371000,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180;
-  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;
-  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+/**
+ * haversine(lat1, lng1, lat2, lng2) → metros
+ * Fórmula de Haversine para distância entre dois pontos geográficos.
+ * Precisa que ângulos sejam em graus (converte internamente para radianos).
+ */
+function haversine(a, b, c, d) {
+  const R  = 6371000; // raio da Terra em metros
+  const dL = (c - a) * Math.PI / 180;
+  const dG = (d - b) * Math.PI / 180;
+  const x  = Math.sin(dL/2)**2 + Math.cos(a*Math.PI/180) * Math.cos(c*Math.PI/180) * Math.sin(dG/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-// ── Find nearest metro & update matrix score ──
+/**
+ * calcNearestMetro(propId)
+ * Encontra a estação de metro mais próxima das coordenadas do imóvel.
+ * Guarda resultado em geoCache e auto-selecciona o critério 'metro'.
+ */
 function calcNearestMetro(propId) {
-  const geo=geoCache[propId];
-  if(!geo||!metroStations.length) return;
-  let nearest=null,minD=Infinity;
-  metroStations.forEach(s=>{
-    const d=haversine(geo.lat,geo.lng,s.lat,s.lng);
-    if(d<minD){minD=d;nearest=s;}
+  const geo = geoCache[propId]; if (!geo || !metroStations.length) return;
+  let nearest = null, minD = Infinity;
+  metroStations.forEach(s => {
+    const d = haversine(geo.lat, geo.lng, s.lat, s.lng);
+    if (d < minD) { minD = d; nearest = s; }
   });
-  if(!nearest) return;
+  if (!nearest) return;
 
   geoCache[propId].metroDist = minD;
   geoCache[propId].metroName = nearest.name;
-  saveGeo();
+  saveState();
 
-  // Auto-update the "metro" criterion in Matriz
-  const idx = minD<400?3 : minD<750?2 : minD<1200?1 : 0;
-  selectOption(propId,'metro',idx);
-
-  // Update badge in modal if this property is open
-  if(modalPropId===propId) showMetroBadge(propId);
-
-  // Re-render matrix cards to show metro pill
-  renderMatrix();
+  /* Mapeia distância para índice de opção:
+     <400m → <5 min → score 3 (Excelente)
+     400-750m → 5-10 min → score 2
+     750-1200m → 10-15 min → score 1
+     >1200m → >15 min → score 0 */
+  const idx = minD < 400 ? 3 : minD < 750 ? 2 : minD < 1200 ? 1 : 0;
+  selectOption(propId, 'metro', idx);
 }
 
-function showMetroBadge(propId) {
-  const geo=geoCache[propId];
-  if(!geo?.metroDist) return;
-  const d=geo.metroDist;
-  const cls=d<400?'good':d<800?'ok':'bad';
-  const mins=Math.max(1,Math.round(d/80));
-  const badge=document.getElementById('modal-metro-badge');
-  badge.textContent=`🚇 ${geo.metroName} — ~${mins} min a pé (${Math.round(d)} m)`;
-  badge.className=`map-metro-badge ${cls}`;
-  badge.style.display='inline-flex';
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 18: DOCS MODAL — gestor de ficheiros IndexedDB
+════════════════════════════════════════════════════════════════ */
+let docsPropId    = null;  // qual imóvel está aberto no modal de docs
+let currentDocKey = null;  // key do doc actualmente visualizado
+
+/** Abre o modal de documentos para um imóvel */
+async function openDocsModal(propId) {
+  docsPropId = propId;
+  const name = properties.find(p => p.id === propId)?.name || `Imóvel ${propId}`;
+  document.getElementById('docs-modal-title-text').textContent = `Documentos · ${name}`;
+  document.getElementById('docs-modal-overlay').style.display  = 'flex';
+  document.body.style.overflow = 'hidden';
+  await renderDocList();
 }
 
+/** Fecha o modal de documentos */
+function closeDocsModal(event) {
+  if (event && event.target !== document.getElementById('docs-modal-overlay')) return;
+  document.getElementById('docs-modal-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+/** Re-renderiza a lista de documentos do imóvel activo */
+async function renderDocList() {
+  if (!docsPropId) return;
+  const list = document.getElementById('doc-list');
+  list.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:8px 0">A carregar…</div>';
+  try {
+    const docs       = await getDocsForProp(docsPropId);
+    const totalBytes = docs.reduce((s, d) => s + d.size, 0);
+    const pct        = Math.min(100, (totalBytes / WARN_BYTES) * 100);
+    const overLimit  = totalBytes > WARN_BYTES;
+
+    /* Actualiza barra de uso */
+    document.getElementById('doc-size-fill').style.width      = pct + '%';
+    document.getElementById('doc-size-fill').style.background = overLimit ? 'var(--red)' : '';
+    document.getElementById('doc-size-label').textContent     = overLimit
+      ? `⚠️ ${fmtSize(totalBytes)} — acima de 50 MB (o browser pode limitar)`
+      : `${fmtSize(totalBytes)} guardados localmente no teu dispositivo`;
+
+    if (docs.length === 0) {
+      list.innerHTML = `<div class="doc-empty">Sem documentos. Adiciona PDFs, certidões, plantas ou outros ficheiros.</div>`;
+      return;
+    }
+
+    /* Renderiza lista de ficheiros */
+    list.innerHTML = docs.map(doc => {
+      const icon     = docIcon(doc.type, doc.name);
+      const canView  = doc.type.startsWith('image/') || doc.type === 'application/pdf';
+      return `<div class="doc-item">
+        <div class="doc-icon">${icon}</div>
+        <div class="doc-info">
+          <div class="doc-name" title="${escHtml(doc.name)}">${escHtml(doc.name)}</div>
+          <div class="doc-meta">${fmtSize(doc.size)} · ${fmtDate(doc.added)}</div>
+        </div>
+        <div class="doc-actions">
+          ${canView ? `<button class="doc-btn view" onclick="viewDoc('${doc.key}')">👁 Ver</button>` : ''}
+          <button class="doc-btn view" onclick="downloadDoc('${doc.key}')">⬇</button>
+          <button class="doc-btn del"  onclick="confirmDeleteDoc('${doc.key}',this)">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div class="doc-empty" style="color:var(--red)">Erro ao carregar documentos. Tenta recarregar a página.</div>`;
+  }
+}
+
+/** Handler para input de ficheiros (clique na zona de upload) */
+async function handleDocFiles(files) {
+  if (!docsPropId || !files.length) return;
+  const zone = document.getElementById('doc-upload-zone');
+  zone.classList.add('dragover'); // feedback visual durante upload
+  for (const file of files) {
+    try { await saveDoc(docsPropId, file); }
+    catch(e) { alert(`Erro ao guardar "${file.name}": ${e.message}`); }
+  }
+  zone.classList.remove('dragover');
+  document.getElementById('doc-file-input').value = ''; // limpa input para permitir re-upload do mesmo ficheiro
+  await renderDocList();
+}
+
+/** Handler para drag & drop de ficheiros */
+async function handleDocDrop(event) {
+  event.preventDefault();
+  document.getElementById('doc-upload-zone').classList.remove('dragover');
+  if (event.dataTransfer.files.length) await handleDocFiles(event.dataTransfer.files);
+}
+
+/**
+ * viewDoc(key)
+ * Abre o visualizador fullscreen para PDFs e imagens.
+ * Converte o ArrayBuffer guardado em Blob URL para renderizar.
+ */
+async function viewDoc(key) {
+  const doc = await getDoc(key); if (!doc) return;
+  currentDocKey = key;
+  const blob = new Blob([doc.data], { type: doc.type });
+  const url  = URL.createObjectURL(blob);
+
+  document.getElementById('pdf-viewer-name').textContent = doc.name;
+  const frame = document.getElementById('pdf-viewer-frame');
+
+  if (doc.type.startsWith('image/')) {
+    /* Imagens: usa uma tag <img> para não depender de iframe PDF viewer */
+    frame.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;display:block;margin:auto;padding:20px">`;
+  } else {
+    /* PDFs: usa iframe com o URL do Blob */
+    frame.innerHTML = `<iframe src="${url}" style="width:100%;height:100%;border:none"></iframe>`;
+  }
+  document.getElementById('pdf-viewer-overlay').style.display = 'flex';
+}
+
+/** Download de um ficheiro guardado */
+async function downloadDoc(key) {
+  const doc = await getDoc(key); if (!doc) return;
+  const blob = new Blob([doc.data], { type: doc.type });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = doc.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000); // limpa URL após download
+}
+
+/** Download do documento actualmente visualizado */
+function downloadCurrentDoc() { if (currentDocKey) downloadDoc(currentDocKey); }
+
+/** Fecha o visualizador de PDF/imagem */
+function closePdfViewer() {
+  document.getElementById('pdf-viewer-overlay').style.display = 'none';
+  document.getElementById('pdf-viewer-frame').innerHTML = ''; // liberta memória do Blob
+}
+
+/**
+ * confirmDeleteDoc(key, btn)
+ * Primeiro clique: muda o botão para "Confirmar?".
+ * Segundo clique (dentro de 2.5s): apaga definitivamente.
+ * Sem segundo modal — UX mais fluida para acções destrutivas pequenas.
+ */
+async function confirmDeleteDoc(key, btn) {
+  btn.textContent = 'Confirmar?';
+  btn.onclick = async () => {
+    await deleteDoc(key);
+    await renderDocList();
+  };
+  /* Reset após 2.5s se não houver segundo clique */
+  setTimeout(() => {
+    btn.textContent = '🗑';
+    btn.onclick = () => confirmDeleteDoc(key, btn);
+  }, 2500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 19: UTILITÁRIOS
+════════════════════════════════════════════════════════════════ */
+
+/** Escapa HTML para prevenir XSS em strings inseridas no DOM */
 function escHtml(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str || '')
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;');
 }
 
-/* ════════════════════════════════════════════════
-   13. INIT
-════════════════════════════════════════════════ */
-(function init(){
+/** Determina o ícone emoji pelo tipo MIME ou extensão do ficheiro */
+function docIcon(type, name) {
+  if (type === 'application/pdf')                           return '📄';
+  if (type.startsWith('image/'))                            return '🖼️';
+  if (type.includes('word') || name.endsWith('.docx') || name.endsWith('.doc')) return '📝';
+  if (type.includes('excel') || name.endsWith('.xlsx'))     return '📊';
+  return '📎';
+}
+
+/** Formata bytes para string legível (B, KB, MB) */
+function fmtSize(bytes) {
+  if (bytes < 1024)           return bytes + ' B';
+  if (bytes < 1024 * 1024)    return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+/** Formata data ISO para formato pt-PT (DD/MM/AAAA) */
+function fmtDate(iso) {
+  try { return new Date(iso).toLocaleDateString('pt-PT'); } catch(e) { return ''; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECÇÃO 20: INICIALIZAÇÃO
+   ──────────────────────────
+   Executado quando a página carrega:
+   1. openDB()    — abre a base de dados IndexedDB para ficheiros
+   2. loadState() — carrega dados do localStorage
+   3. Se não há imóveis, cria um de raiz para não mostrar ecrã vazio
+   4. renderMatrix() + renderWeights() — renderiza os painéis principais
+   5. renderHome() — renderiza a homepage
+════════════════════════════════════════════════════════════════ */
+(async function init() {
+  await openDB();    // IMPORTANTE: aguarda que o IndexedDB esteja pronto
   loadState();
-  if(properties.length===0){ properties.push({id:nextId++,name:'',selections:{}}); saveState(); }
-  renderMatrix();
-  renderWeights();
+
+  if (properties.length === 0) {
+    /* Cria um imóvel vazio para o utilizador começar com algo visível */
+    properties.push({ id: nextId++, name: '', selections: {} });
+    saveState();
+  }
+
+  renderMatrix();   // Matriz é a segunda tab mas o estado é útil para a homepage
+  renderWeights();  // Pesos também são necessários antes de qualquer renderHome
+  renderHome();     // Renderiza a homepage (tab activa por defeito)
 })();
 </script>
 </body>
 </html>
-
-// Guarda estado do mapa
-let mapInstance = null;          // instância Leaflet
-let mapInitialized = false;
-let mapLayers = {};              // {propId: {marker, circle, line, metroMarkers[]}}
-let metroStations = [];          // cache das estações carregadas via Overpass
-let metroLoaded = false;
-// Geocoords por imóvel: {propId: {lat,lng,metroName,metroDist}}
-let geoCache = {};
-try { geoCache = JSON.parse(localStorage.getItem('im2_geo')||'{}'); } catch(e){ geoCache={}; }
-
-function saveGeo(){ localStorage.setItem('im2_geo', JSON.stringify(geoCache)); }
-
-// ── Inicialização da tab Mapa ──────────────────
-function initMapTab() {
-  renderMapSidebar();
-
-  if(!mapInitialized) {
-    // Centro em Lisboa
-    mapInstance = L.map('map', {zoomControl:true}).setView([38.716, -9.142], 13);
-
-    // Tiles OpenStreetMap (gratuito, sem API key)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19
-    }).addTo(mapInstance);
-
-    mapInitialized = true;
-
-    // Carrega estações de metro de Lisboa via Overpass API
-    loadMetroStations();
-  } else {
-    // Já inicializado — apenas redimensiona (necessário quando tab estava escondida)
-    setTimeout(() => mapInstance.invalidateSize(), 50);
-  }
-
-  // Renderiza pins de imóveis que já têm coordenadas
-  Object.keys(geoCache).forEach(pid => {
-    const prop = properties.find(p=>p.id===Number(pid));
-    if(prop) renderPropOnMap(Number(pid));
-  });
-}
-
-// ── Renderiza sidebar com cards por imóvel ─────
-function renderMapSidebar() {
-  const sidebar = document.getElementById('mapa-sidebar');
-  if(!sidebar) return;
-
-  if(properties.length===0) {
-    sidebar.innerHTML=`<div class="empty-state" style="grid-column:unset"><div class="ei">🏠</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
-    return;
-  }
-
-  // Legenda
-  sidebar.innerHTML = `
-    <div class="map-legend">
-      <div class="map-legend-title">Legenda</div>
-      <div class="map-legend-item"><span class="leg-dot" style="background:#e8253d"></span> Estação de Metro</div>
-      <div class="map-legend-item"><span class="leg-line"></span> Distância ao metro mais próximo</div>
-      ${properties.map((p,i)=>`<div class="map-legend-item"><span class="leg-dot" style="background:${PROP_COLORS[i]}"></span> ${escHtml(p.name||`Imóvel ${p.id}`)}</div>`).join('')}
-    </div>
-    <button class="map-all-btn" onclick="fitAllProperties()">🔍 Ver todos os imóveis</button>
-    ${properties.map((p,i) => buildMapPropCard(p,i)).join('')}
-  `;
-}
-
-function buildMapPropCard(prop, colorIdx) {
-  const color = PROP_COLORS[colorIdx];
-  const geo = geoCache[prop.id];
-  const name = prop.name || `Imóvel ${prop.id}`;
-  const addrVal = geo?.address || aruData[prop.id]?.morada || '';
-
-  let metroHtml = '';
-  if(geo?.metroDist != null) {
-    const d = geo.metroDist;
-    const cls = d<400?'good':d<800?'ok':'bad';
-    const label = d<60?'<1 min a pé': d<400?`~${Math.round(d/80)} min a pé`:`~${Math.round(d/80)} min a pé`;
-    metroHtml = `<div class="map-metro-result">
-      <span class="map-metro-badge ${cls}">🚇 ${label}</span>
-      <div class="map-metro-name">Metro mais próximo: <strong>${geo.metroName||'—'}</strong> (${Math.round(d)} m)</div>
-    </div>`;
-  }
-
-  return `<div class="map-prop-card${geo?'':''}" id="mpc-${prop.id}" onclick="focusPropOnMap(${prop.id})">
-    <div class="map-prop-title">
-      <span class="map-prop-color" style="background:${color}"></span>
-      ${escHtml(name)}
-    </div>
-    <div class="map-search-row">
-      <input class="map-addr-input" id="mapaddr-${prop.id}" type="text"
-        value="${escHtml(addrVal)}"
-        placeholder="Morada completa, Lisboa…">
-      <button class="map-geocode-btn" id="mapbtn-${prop.id}"
-        onclick="event.stopPropagation();geocodeProp(${prop.id})">📍 Localizar</button>
-    </div>
-    <div class="map-status" id="mapstatus-${prop.id}">${geo?'<span class=ok>✓ Localizado</span>':''}</div>
-    ${metroHtml}
-  </div>`;
-}
-
-// ── Geocodificação via Nominatim ───────────────
-async function geocodeProp(propId) {
-  const input = document.getElementById(`mapaddr-${propId}`);
-  const btn   = document.getElementById(`mapbtn-${propId}`);
-  const status= document.getElementById(`mapstatus-${propId}`);
-  const addr  = input?.value?.trim();
-
-  if(!addr) { setStatus(propId,'Insere uma morada primeiro.','error'); return; }
-
-  btn.disabled = true;
-  setStatus(propId,'A procurar…','');
-
-  try {
-    // Nominatim geocoding — gratuito, sem API key, necessita user-agent
-    const q = encodeURIComponent(addr + ', Lisboa, Portugal');
-    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=pt`;
-    const res = await fetch(url, { headers:{'Accept-Language':'pt','User-Agent':'MatrizImoveis/1.0'} });
-    const data = await res.json();
-
-    if(!data || data.length===0) {
-      setStatus(propId,'Morada não encontrada. Tenta ser mais específico.','error');
-      btn.disabled=false; return;
-    }
-
-    const {lat,lon,display_name} = data[0];
-    const latlng = [parseFloat(lat), parseFloat(lon)];
-
-    // Guarda no cache
-    geoCache[propId] = { lat:latlng[0], lng:latlng[1], address: addr, display: display_name };
-    saveGeo();
-
-    // Actualiza também a morada na tab ARU
-    if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
-    aruData[propId].morada = addr;
-    saveState();
-
-    setStatus(propId,'✓ Localizado','ok');
-    renderPropOnMap(propId);
-
-    // Calcula distância ao metro
-    if(metroLoaded && metroStations.length>0) {
-      calcNearestMetro(propId);
-    } else {
-      // Metro ainda a carregar — vai calcular quando carregar
-    }
-
-    // Centra mapa no imóvel
-    mapInstance.flyTo(latlng, 15, {duration:1.2});
-
-  } catch(e) {
-    setStatus(propId,'Erro na geocodificação. Verifica a ligação.','error');
-  }
-  btn.disabled = false;
-}
-
-function setStatus(propId, msg, cls) {
-  const el = document.getElementById(`mapstatus-${propId}`);
-  if(el) el.innerHTML = `<span class="${cls}">${msg}</span>`;
-}
-
-// ── Carrega estações de metro via Overpass ─────
-async function loadMetroStations() {
-  try {
-    // Overpass query: todos os nós com station=subway em Lisboa
-    const query = `[out:json][timeout:15];
-      node["station"="subway"](38.65,-9.25,38.80,-9.08);
-      out body;`;
-    const url = 'https://overpass-api.de/api/interpreter';
-    const res = await fetch(url, {
-      method:'POST',
-      body:'data='+encodeURIComponent(query)
-    });
-    const data = await res.json();
-
-    if(data.elements && data.elements.length>0) {
-      metroStations = data.elements.map(e=>({
-        id:e.id,
-        lat:e.lat,
-        lng:e.lon,
-        name: e.tags?.name || e.tags?.['name:pt'] || 'Metro'
-      }));
-      metroLoaded = true;
-
-      // Adiciona marcadores de metro ao mapa
-      const metroIcon = L.divIcon({
-        html:`<div style="
-          width:14px;height:14px;
-          background:#e8253d;border:2px solid #fff;
-          border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.4)
-        "></div>`,
-        iconSize:[14,14], iconAnchor:[7,7], className:''
-      });
-
-      metroStations.forEach(s => {
-        L.marker([s.lat,s.lng], {icon:metroIcon})
-          .addTo(mapInstance)
-          .bindTooltip(`🚇 ${s.name}`, {permanent:false, direction:'top', className:'metro-tip'});
-      });
-
-      // Calcula metro para imóveis já geocodificados
-      Object.keys(geoCache).forEach(pid => {
-        if(geoCache[pid]?.lat) calcNearestMetro(Number(pid));
-      });
-    }
-  } catch(e) {
-    console.warn('Overpass API error:', e);
-    // Fallback: usa estações hardcoded de Lisboa
-    loadMetroFallback();
-  }
-}
-
-// ── Fallback: estações de metro hardcoded ──────
-function loadMetroFallback() {
-  metroStations = [
-    {name:'Aeroporto',lat:38.7701,lng:-9.1282},{name:'Encarnação',lat:38.7668,lng:-9.1279},
-    {name:'Odivelas',lat:38.7893,lng:-9.1789},{name:'Senhor Roubado',lat:38.7773,lng:-9.1719},
-    {name:'Alfornelos',lat:38.7659,lng:-9.1836},{name:'Pontinha',lat:38.7614,lng:-9.1874},
-    {name:'Carnide',lat:38.7563,lng:-9.1879},{name:'Colégio Militar',lat:38.7475,lng:-9.1881},
-    {name:'Alto dos Moinhos',lat:38.7414,lng:-9.1837},{name:'Laranjeiras',lat:38.7358,lng:-9.1804},
-    {name:'Jardim Zoológico',lat:38.7344,lng:-9.1756},{name:'Praça de Espanha',lat:38.7352,lng:-9.1616},
-    {name:'São Sebastião',lat:38.7295,lng:-9.1521},{name:'Parque',lat:38.7261,lng:-9.1552},
-    {name:'Marquês de Pombal',lat:38.7254,lng:-9.1498},{name:'Avenida',lat:38.7223,lng:-9.1464},
-    {name:'Restauradores',lat:38.7177,lng:-9.1414},{name:'Rossio',lat:38.7151,lng:-9.1398},
-    {name:'Baixa-Chiado',lat:38.7108,lng:-9.1406},{name:'Terreiro do Paço',lat:38.7076,lng:-9.1368},
-    {name:'Santa Apolónia',lat:38.7134,lng:-9.1237},{name:'Intendente',lat:38.7213,lng:-9.1337},
-    {name:'Anjos',lat:38.7248,lng:-9.1320},{name:'Arroios',lat:38.7262,lng:-9.1361},
-    {name:'Picoas',lat:38.7283,lng:-9.1486},{name:'Saldanha',lat:38.7325,lng:-9.1437},
-    {name:'Campo Pequeno',lat:38.7375,lng:-9.1451},{name:'Entre Campos',lat:38.7415,lng:-9.1518},
-    {name:'Cidade Universitária',lat:38.7460,lng:-9.1545},{name:'Entrecampos',lat:38.7421,lng:-9.1530},
-    {name:'Quinta das Conchas',lat:38.7611,lng:-9.1458},{name:'Odivelas',lat:38.7893,lng:-9.1789},
-    {name:'Oriente',lat:38.7676,lng:-9.0990},{name:'Olivais',lat:38.7609,lng:-9.1050},
-    {name:'Chelas',lat:38.7524,lng:-9.1166},{name:'Bela Vista',lat:38.7439,lng:-9.1195},
-    {name:'Olaias',lat:38.7384,lng:-9.1200},{name:'Roma',lat:38.7348,lng:-9.1325},
-    {name:'Areeiro',lat:38.7316,lng:-9.1290},{name:'Alameda',lat:38.7270,lng:-9.1299},
-    {name:'Rato',lat:38.7201,lng:-9.1552},{name:'Estrela',lat:38.7141,lng:-9.1591},
-    {name:'Santos',lat:38.7080,lng:-9.1531},{name:'Cais do Sodré',lat:38.7060,lng:-9.1470},
-    {name:'Infante Santo',lat:38.7061,lng:-9.1595},{name:'Alcântara-Mar',lat:38.6984,lng:-9.1777},
-  ];
-  metroLoaded = true;
-
-  const metroIcon = L.divIcon({
-    html:`<div style="width:14px;height:14px;background:#e8253d;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-    iconSize:[14,14],iconAnchor:[7,7],className:''
-  });
-  metroStations.forEach(s => {
-    L.marker([s.lat,s.lng],{icon:metroIcon})
-      .addTo(mapInstance)
-      .bindTooltip(`🚇 ${s.name}`,{permanent:false,direction:'top'});
-  });
-
-  Object.keys(geoCache).forEach(pid => {
-    if(geoCache[pid]?.lat) calcNearestMetro(Number(pid));
-  });
-}
-
-// ── Distância haversine (metros) ───────────────
-function haversine(lat1,lng1,lat2,lng2) {
-  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-// ── Calcula metro mais próximo e actualiza ─────
-function calcNearestMetro(propId) {
-  const geo = geoCache[propId];
-  if(!geo || !metroStations.length) return;
-
-  let nearest=null, minDist=Infinity;
-  metroStations.forEach(s => {
-    const d = haversine(geo.lat,geo.lng,s.lat,s.lng);
-    if(d<minDist){ minDist=d; nearest=s; }
-  });
-  if(!nearest) return;
-
-  geoCache[propId].metroDist = minDist;
-  geoCache[propId].metroName = nearest.name;
-  geoCache[propId].metroLat  = nearest.lat;
-  geoCache[propId].metroLng  = nearest.lng;
-  saveGeo();
-
-  // Actualiza o critério "metro" na Matriz automaticamente
-  const optIdx = minDist<400?3 : minDist<750?2 : minDist<1200?1 : 0;
-  selectOption(propId,'metro',optIdx);
-
-  // Desenha/actualiza linha no mapa
-  renderPropOnMap(propId);
-
-  // Actualiza sidebar sem re-render total
-  renderMapSidebar();
-}
-
-// ── Render de um imóvel no mapa ────────────────
-function renderPropOnMap(propId) {
-  const geo = geoCache[propId];
-  if(!geo || !mapInstance) return;
-
-  const colorIdx = properties.findIndex(p=>p.id===propId);
-  const color = PROP_COLORS[colorIdx] || '#b8975a';
-  const name  = properties.find(p=>p.id===propId)?.name || `Imóvel ${propId}`;
-
-  // Remove camadas anteriores deste imóvel
-  if(mapLayers[propId]) {
-    const {marker,circle,line} = mapLayers[propId];
-    if(marker) mapInstance.removeLayer(marker);
-    if(circle) mapInstance.removeLayer(circle);
-    if(line)   mapInstance.removeLayer(line);
-  }
-
-  // Ícone personalizado com cor do imóvel
-  const icon = L.divIcon({
-    html:`<div style="
-      width:22px;height:22px;
-      background:${color};border:3px solid #fff;
-      border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-      box-shadow:0 2px 8px rgba(0,0,0,.35);
-    "><div style="
-      width:8px;height:8px;background:#fff;border-radius:50%;
-      position:absolute;top:4px;left:4px;transform:none;
-    "></div></div>`,
-    iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-22], className:''
-  });
-
-  const marker = L.marker([geo.lat,geo.lng],{icon})
-    .addTo(mapInstance)
-    .bindPopup(`<strong style="font-family:'Playfair Display',serif">${name}</strong><br><span style="font-size:.8rem;color:#666">${geo.address||''}</span>${geo.metroName?`<br><span style="font-size:.8rem">🚇 ${geo.metroName} — ${Math.round(geo.metroDist)}m</span>`:''}`);
-
-  // Círculo de 1km
-  const circle = L.circle([geo.lat,geo.lng],{
-    radius:1000, color:color, fillColor:color,
-    fillOpacity:.05, weight:1.5, dashArray:'6 4'
-  }).addTo(mapInstance);
-
-  // Linha ao metro mais próximo
-  let line = null;
-  if(geo.metroLat) {
-    line = L.polyline([[geo.lat,geo.lng],[geo.metroLat,geo.metroLng]], {
-      color:color, weight:2.5, dashArray:'8 5', opacity:.8
-    }).addTo(mapInstance);
-  }
-
-  mapLayers[propId] = {marker,circle,line};
-}
-
-// ── Focar imóvel no mapa ao clicar no card ─────
-function focusPropOnMap(propId) {
-  const geo = geoCache[propId];
-  // Highlight card
-  document.querySelectorAll('.map-prop-card').forEach(c=>c.classList.remove('active'));
-  const card = document.getElementById(`mpc-${propId}`);
-  if(card) card.classList.add('active');
-
-  if(geo && mapInstance) {
-    mapInstance.flyTo([geo.lat,geo.lng],16,{duration:1});
-    mapLayers[propId]?.marker?.openPopup();
-  }
-}
-
-// ── Fit ao extent de todos os imóveis ─────────
-function fitAllProperties() {
-  const points = Object.values(geoCache).filter(g=>g.lat).map(g=>[g.lat,g.lng]);
-  if(points.length===0) return;
-  if(points.length===1) { mapInstance.flyTo(points[0],15); return; }
-  mapInstance.flyToBounds(L.latLngBounds(points).pad(.2),{duration:1.2});
-}
-function escHtml(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ════════════════════════════════════════════════
-   13. INIT
-════════════════════════════════════════════════ */
-(function init(){
-  loadState();
-  if(properties.length===0){ properties.push({id:nextId++,name:'',selections:{}}); saveState(); }
-  renderMatrix();
-  renderWeights();
-})();
-</script>
-</body>
-</html> 
