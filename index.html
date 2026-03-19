@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Matriz de Escolha de Imóvel — Lisboa</title>
 <style>
-  body { font-family: Georgia, serif; background: #f8f7f4; color: #1a1a1a; padding: 20px; }
-  .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-  .tab-btn { padding: 10px 15px; cursor: pointer; border: 1px solid #ccc; border-bottom: none; background: #fff; }
-  .tab-btn.active { background: #c8a951; color: #fff; font-weight: bold; }
-  .tab-content { border: 1px solid #ccc; padding: 15px; background: #fff; display: none; }
-  .tab-content.active { display: block; }
-  .property-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-  .property-input { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-  .remove-btn { cursor: pointer; color: #ef4444; font-weight: bold; }
-  .option-btn { padding: 4px 8px; margin-right: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; }
-  .option-btn.selected { background: #1a1a2e; color: #c8a951; font-weight: bold; }
-  .add-btn { padding: 6px 10px; margin-top: 10px; cursor: pointer; border: 1px dashed #c8a951; background: #fefce8; }
+body { font-family: Georgia, serif; background: #f8f7f4; color: #1a1a1a; padding: 20px; }
+h1 { margin-bottom: 20px; }
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.tab-btn { padding: 10px 15px; cursor: pointer; border: 1px solid #ccc; border-bottom: none; background: #fff; }
+.tab-btn.active { background: #c8a951; color: #fff; font-weight: bold; }
+.tab-content { border: 1px solid #ccc; padding: 15px; background: #fff; display: none; }
+.tab-content.active { display: block; }
+.property-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+.property-input { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+.remove-btn { cursor: pointer; color: #ef4444; font-weight: bold; }
+.option-btn { padding: 4px 8px; margin-right: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; }
+.option-btn.selected { background: #1a1a2e; color: #c8a951; font-weight: bold; }
+.add-btn { padding: 6px 10px; margin-top: 10px; cursor: pointer; border: 1px dashed #c8a951; background: #fefce8; }
 </style>
 </head>
 <body>
@@ -24,9 +25,9 @@
 <h1>Matriz de Escolha de Imóvel — Lisboa</h1>
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="showTab('matrix')">Matriz</button>
-  <button class="tab-btn" onclick="showTab('weights')">Pesos</button>
-  <button class="tab-btn" onclick="showTab('pre1951')">Pré-1951</button>
+  <button class="tab-btn active" onclick="showTab('matrix', event)">Matriz</button>
+  <button class="tab-btn" onclick="showTab('weights', event)">Pesos</button>
+  <button class="tab-btn" onclick="showTab('pre1951', event)">Pré-1951</button>
 </div>
 
 <div id="tab-matrix" class="tab-content active">
@@ -35,7 +36,7 @@
 </div>
 
 <div id="tab-weights" class="tab-content">
-  <p>Aqui podes ajustar os pesos dos critérios (simplificado)</p>
+  <p>Aqui podes ajustar os pesos dos critérios:</p>
   <div id="weights-list"></div>
   <button class="add-btn" onclick="resetWeights()">Reset Pesos</button>
 </div>
@@ -45,97 +46,105 @@
 </div>
 
 <script>
-  // ---- DADOS INICIAIS ----
-  let nextId = 1;
-  let properties = [];
-  const CRITERIA = [
-    {id: 'local', name: 'Localização', options: ['Mau', 'Médio', 'Bom', 'Excelente']},
-    {id: 'preco', name: 'Preço', options: ['Mau', 'Médio', 'Bom', 'Excelente']},
-    {id: 'tam', name: 'Tamanho', options: ['Pequeno', 'Médio', 'Grande']}
-  ];
-  let weights = {};
-  CRITERIA.forEach(c => weights[c.id] = 1);
+// ---- DADOS ----
+let nextId = 1;
+let properties = JSON.parse(localStorage.getItem('properties') || '[]');
+const CRITERIA = [
+  {id: 'local', name: 'Localização', options: ['Mau','Médio','Bom','Excelente']},
+  {id: 'preco', name: 'Preço', options: ['Mau','Médio','Bom','Excelente']},
+  {id: 'tam', name: 'Tamanho', options: ['Pequeno','Médio','Grande']}
+];
+let weights = JSON.parse(localStorage.getItem('weights') || '{}');
+if(Object.keys(weights).length===0) CRITERIA.forEach(c => weights[c.id]=1);
 
-  // ---- FUNÇÕES ----
-  function showTab(tab) {
-    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-    document.getElementById('tab-' + tab).classList.add('active');
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-  }
+// ---- FUNÇÕES ----
+function saveData() {
+  localStorage.setItem('properties', JSON.stringify(properties));
+  localStorage.setItem('weights', JSON.stringify(weights));
+}
 
-  function renderMatrix() {
-    const container = document.getElementById('properties-list');
-    container.innerHTML = '';
-    properties.forEach(p => {
-      const row = document.createElement('div');
-      row.className = 'property-row';
-      row.innerHTML = `
-        <input class="property-input" value="${p.name}" oninput="updateName(${p.id}, this.value)">
-        <span class="remove-btn" onclick="removeProp(${p.id})">✕</span>
-      `;
-      CRITERIA.forEach(c => {
-        const div = document.createElement('div');
-        c.options.forEach((opt, i) => {
-          const btn = document.createElement('button');
-          btn.textContent = opt;
-          btn.className = 'option-btn' + (p.selections[c.id]===i?' selected':'');
-          btn.onclick = () => selectOpt(p.id, c.id, i);
-          div.appendChild(btn);
-        });
-        row.appendChild(div);
+function showTab(tab, event) {
+  document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.remove('active'));
+  if(event) event.currentTarget.classList.add('active');
+}
+
+function renderMatrix() {
+  const container = document.getElementById('properties-list');
+  container.innerHTML = '';
+  properties.forEach(p=>{
+    const row = document.createElement('div');
+    row.className='property-row';
+    row.innerHTML=`<input class="property-input" value="${p.name}" oninput="updateName(${p.id}, this.value)">
+                   <span class="remove-btn" onclick="removeProp(${p.id})">✕</span>`;
+    CRITERIA.forEach(c=>{
+      const div=document.createElement('div');
+      c.options.forEach((opt,i)=>{
+        const btn=document.createElement('button');
+        btn.textContent=opt;
+        btn.className='option-btn'+(p.selections?.[c.id]===i?' selected':'');
+        btn.onclick=()=>{ selectOpt(p.id,c.id,i); };
+        div.appendChild(btn);
       });
-      container.appendChild(row);
+      row.appendChild(div);
     });
-  }
+    container.appendChild(row);
+  });
+}
 
-  function addProp() {
-    if(properties.length >= 4) return;
-    properties.push({id: nextId++, name: `Imóvel ${nextId}`, selections: {}});
-    renderMatrix();
-  }
+function addProp() {
+  if(properties.length>=4) return;
+  properties.push({id: nextId++, name:`Imóvel ${nextId}`, selections:{}});
+  saveData();
+  renderMatrix();
+}
 
-  function removeProp(id) {
-    if(properties.length <= 1) return;
-    properties = properties.filter(p => p.id !== id);
-    renderMatrix();
-  }
+function removeProp(id) {
+  if(properties.length<=1) return;
+  properties = properties.filter(p=>p.id!==id);
+  saveData();
+  renderMatrix();
+}
 
-  function updateName(id, val) {
-    properties = properties.map(p => p.id===id ? {...p, name:val} : p);
-  }
+function updateName(id,val) {
+  properties=properties.map(p=>p.id===id?{...p,name:val}:p);
+  saveData();
+}
 
-  function selectOpt(propId, criterionId, optIdx) {
-    properties = properties.map(p => p.id===propId ? {...p, selections:{...p.selections, [criterionId]: optIdx}} : p);
-    renderMatrix();
-  }
+function selectOpt(propId,criterionId,optIdx) {
+  properties=properties.map(p=>p.id===propId?{...p,selections:{...p.selections,[criterionId]:optIdx}}:p);
+  saveData();
+  renderMatrix();
+}
 
-  function renderWeights() {
-    const container = document.getElementById('weights-list');
-    container.innerHTML = '';
-    CRITERIA.forEach(c => {
-      const div = document.createElement('div');
-      div.innerHTML = `
-        <label>${c.name}: <input type="number" min="0" max="10" value="${weights[c.id]}" onchange="updateWeight('${c.id}', this.value)"></label>
-      `;
-      container.appendChild(div);
-    });
-  }
+function renderWeights() {
+  const container=document.getElementById('weights-list');
+  container.innerHTML='';
+  CRITERIA.forEach(c=>{
+    const div=document.createElement('div');
+    div.innerHTML=`<label>${c.name}: <input type="number" min="0" max="10" value="${weights[c.id]}" onchange="updateWeight('${c.id}', this.value)"></label>`;
+    container.appendChild(div);
+  });
+}
 
-  function updateWeight(id, val) {
-    weights[id] = Number(val);
-    renderMatrix();
-  }
+function updateWeight(id,val) {
+  weights[id]=Number(val);
+  saveData();
+  renderMatrix();
+}
 
-  function resetWeights() {
-    CRITERIA.forEach(c => weights[c.id] = 1);
-    renderWeights();
-    renderMatrix();
-  }
-
-  // ---- INIT ----
-  addProp();
+function resetWeights() {
+  CRITERIA.forEach(c=>weights[c.id]=1);
+  saveData();
   renderWeights();
+  renderMatrix();
+}
+
+// ---- INIT ----
+if(properties.length===0) addProp();
+renderMatrix();
+renderWeights();
 </script>
 
 </body>
