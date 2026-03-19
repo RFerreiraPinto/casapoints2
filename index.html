@@ -5,505 +5,138 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Matriz de Escolha de Imóvel — Lisboa</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Georgia, 'Times New Roman', serif; background: #f8f7f4; color: #1a1a1a; min-height: 100vh; }
-
-  /* HEADER */
-  .header { background: #1a1a2e; color: #fff; padding: 28px 24px 22px; border-bottom: 4px solid #c8a951; }
-  .header-inner { max-width: 1100px; margin: 0 auto; }
-  .header-sub { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: #c8a951; margin-bottom: 8px; }
-  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-  .header p { margin-top: 6px; color: #a0aec0; font-size: 13px; }
-
-  /* TABS */
-  .tabs { background: #fff; border-bottom: 1px solid #e2e0d8; }
-  .tabs-inner { max-width: 1100px; margin: 0 auto; display: flex; }
-  .tab-btn { padding: 13px 18px; border: none; background: none; cursor: pointer; font-size: 13px; font-family: inherit; color: #718096; border-bottom: 3px solid transparent; font-weight: 400; transition: all 0.15s; white-space: nowrap; }
-  .tab-btn.active { color: #1a1a2e; border-bottom-color: #c8a951; font-weight: 700; }
-
-  /* MAIN */
-  .main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
-
-  /* WARNING BANNER */
-  .banner { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-  .banner-title { font-weight: 700; color: #92400e; margin-bottom: 4px; font-size: 14px; }
-  .banner-body { color: #78350f; font-size: 13px; }
-  .banner-close { background: none; border: none; cursor: pointer; color: #92400e; font-size: 20px; line-height: 1; padding: 0 4px; flex-shrink: 0; }
-
-  /* SCORE GRID */
-  .score-grid { display: grid; gap: 12px; margin-bottom: 20px; }
-  .score-label-cell { background: #f0ede8; border-radius: 8px; padding: 16px; display: flex; align-items: center; font-size: 12px; color: #6b7280; font-style: italic; }
-  .score-card { background: #fff; border: 1px solid #e2e0d8; border-radius: 8px; padding: 16px; text-align: center; position: relative; transition: border-color 0.2s; }
-  .score-card.best { border-width: 2px; }
-  .best-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
-  .score-num { font-size: 32px; font-weight: 700; }
-  .score-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
-  .score-bar-wrap { margin-top: 8px; background: #e5e7eb; border-radius: 4px; height: 6px; overflow: hidden; }
-  .score-bar { height: 100%; border-radius: 4px; transition: width 0.4s; }
-
-  /* PROPERTY NAME ROW */
-  .name-grid { display: grid; gap: 12px; margin-bottom: 10px; align-items: center; }
-  .name-label { font-size: 11px; color: #9ca3af; letter-spacing: 1px; text-transform: uppercase; padding: 8px 0; }
-  .name-cell { display: flex; gap: 6px; align-items: center; }
-  .name-input { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; font-family: inherit; font-weight: 600; background: #fff; color: #1a1a2e; }
-  .name-input:focus { outline: none; border-color: #c8a951; }
-  .remove-btn { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 18px; padding: 4px; line-height: 1; }
-
-  /* CRITERIA ROWS */
-  .criterion-row { display: grid; gap: 12px; border-radius: 8px; padding: 12px 0; margin-bottom: 6px; }
-  .criterion-row:nth-child(even) { background: #fff; }
-  .criterion-row:nth-child(odd) { background: #faf9f7; }
-  .criterion-label { padding: 0 12px; display: flex; flex-direction: column; justify-content: center; }
-  .criterion-title { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-  .criterion-name { font-weight: 700; font-size: 13px; color: #1a1a2e; }
-  .weight-badge { font-size: 11px; background: #1a1a2e; color: #c8a951; border-radius: 4px; padding: 1px 5px; font-weight: 700; }
-  .criterion-desc { font-size: 11px; color: #9ca3af; font-style: italic; }
-  .options-cell { padding: 0 8px; display: flex; flex-direction: column; gap: 4px; }
-  .opt-btn { padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; text-align: left; font-family: inherit; transition: all 0.12s; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e2e0d8; background: #fff; color: #374151; }
-  .opt-btn:hover { border-color: #c8a951; }
-  .opt-btn.selected { border: 2px solid #1a1a2e; background: #1a1a2e; color: #c8a951; font-weight: 700; }
-  .opt-btn.selected.warning { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
-  .opt-score { font-size: 10px; font-weight: 700; }
-  .contrib { margin-top: 5px; font-size: 11px; color: #6b7280; text-align: right; }
-
-  /* ADD / RESET */
-  .add-btn { width: 100%; padding: 12px; border: 2px dashed #c8a951; border-radius: 8px; background: none; color: #c8a951; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 12px; letter-spacing: 0.5px; }
-  .add-btn:hover { background: #fefce8; }
-  .reset-wrap { text-align: center; margin-top: 14px; }
-  .reset-link { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 12px; font-family: inherit; text-decoration: underline; }
-
-  /* WEIGHTS TAB */
-  .card { background: #fff; border-radius: 10px; border: 1px solid #e2e0d8; overflow: hidden; }
-  .card-header { padding: 18px 24px; border-bottom: 1px solid #e2e0d8; background: #faf9f7; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-  .card-header h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .card-header p { color: #6b7280; font-size: 13px; }
-  .repor-btn { background: none; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; color: #6b7280; font-family: inherit; white-space: nowrap; }
-  .repor-btn:hover { border-color: #9ca3af; }
-  .weight-row { padding: 14px 24px; border-bottom: 1px solid #f0ede8; display: flex; align-items: center; gap: 16px; }
-  .weight-row:last-of-type { border-bottom: none; }
-  .weight-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
-  .weight-info { flex: 1; }
-  .weight-top { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; font-weight: 600; }
-  .weight-pct { font-size: 13px; color: #9ca3af; font-weight: 400; margin-left: 6px; }
-  .weight-slider { width: 100%; accent-color: #c8a951; cursor: pointer; }
-  .weight-ticks { display: flex; justify-content: space-between; font-size: 11px; color: #d1d5db; margin-top: 2px; }
-  .card-footer { padding: 14px 24px; background: #1a1a2e; color: #c8a951; display: flex; justify-content: space-between; font-weight: 700; align-items: center; }
-  .card-footer span:last-child { font-size: 20px; }
-
-  /* LOGIN SCREEN */
-  #login-screen { position:fixed; inset:0; background:#1a1a2e; display:flex; align-items:center; justify-content:center; z-index:9999; }
-  .login-box { background:#fff; border-radius: 16px; padding: 48px 40px; width: 100%; max-width: 400px; box-shadow: 0 24px 64px rgba(0,0,0,0.4); text-align:center; }
-  .login-logo { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: #c8a951; margin-bottom: 12px; }
-  .login-box h1 { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
-  .login-box p { font-size: 13px; color: #9ca3af; margin-bottom: 32px; line-height: 1.5; }
-  .login-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #6b7280; font-weight: 700; display:block; text-align:left; margin-bottom: 8px; }
-  .login-input { width: 100%; padding: 14px 16px; border: 2px solid #e2e0d8; border-radius: 8px; font-size: 16px; font-family: inherit; letter-spacing: 3px; text-align: center; color: #1a1a2e; outline: none; transition: border-color 0.15s; background: #faf9f7; }
-  .login-input:focus { border-color: #c8a951; background: #fff; }
-  .login-input.error { border-color: #ef4444; background: #fef2f2; animation: shake 0.3s; }
-  .login-btn { width: 100%; margin-top: 16px; padding: 14px; background: #1a1a2e; color: #c8a951; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 1px; transition: background 0.15s; }
-  .login-btn:hover { background: #2d2d4e; }
-  .login-error { margin-top: 12px; color: #ef4444; font-size: 13px; height: 18px; }
-  .login-footer { margin-top: 28px; padding-top: 20px; border-top: 1px solid #f0ede8; font-size: 11px; color: #d1d5db; }
-  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
-
-  /* PRE-1951 TAB */
-  .warn-header { padding: 18px 24px; border-bottom: 1px solid #e2e0d8; background: #fffbeb; }
-  .warn-header h2 { font-size: 17px; font-weight: 700; color: #92400e; margin-bottom: 6px; }
-  .warn-header p { color: #78350f; font-size: 13px; line-height: 1.6; }
-  .warn-body { padding: 24px; }
-  .warn-item { margin-bottom: 20px; border-left: 4px solid; padding-left: 16px; }
-  .warn-item-title { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .warn-item-title span:first-child { font-size: 18px; }
-  .warn-item-title strong { font-size: 14px; color: #1a1a2e; }
-  .warn-item p { font-size: 13px; color: #4b5563; line-height: 1.65; }
-  .green-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px 20px; margin-top: 8px; }
-  .green-box-title { font-weight: 700; color: #166534; margin-bottom: 6px; font-size: 14px; }
-  .green-box p { font-size: 13px; color: #166534; line-height: 1.65; }
+  body { font-family: Georgia, serif; background: #f8f7f4; color: #1a1a1a; padding: 20px; }
+  .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+  .tab-btn { padding: 10px 15px; cursor: pointer; border: 1px solid #ccc; border-bottom: none; background: #fff; }
+  .tab-btn.active { background: #c8a951; color: #fff; font-weight: bold; }
+  .tab-content { border: 1px solid #ccc; padding: 15px; background: #fff; display: none; }
+  .tab-content.active { display: block; }
+  .property-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+  .property-input { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+  .remove-btn { cursor: pointer; color: #ef4444; font-weight: bold; }
+  .option-btn { padding: 4px 8px; margin-right: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; }
+  .option-btn.selected { background: #1a1a2e; color: #c8a951; font-weight: bold; }
+  .add-btn { padding: 6px 10px; margin-top: 10px; cursor: pointer; border: 1px dashed #c8a951; background: #fefce8; }
 </style>
 </head>
 <body>
 
-<!-- =====================================================
-     ECRÃ DE LOGIN
-===================================================== -->
-<div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">Ferramenta de Apoio</div>
-    <h1>Matriz de Imóvel</h1>
-    <p>Introduz o teu código de acesso<br>para entrar na ferramenta.</p>
-    <label class="login-label" for="codigo-input">Código de acesso</label>
-    <input id="codigo-input" class="login-input" type="password" placeholder="••••••••"
-      onkeydown="if(event.key==='Enter') tentarLogin()" autocomplete="off" />
-    <button class="login-btn" onclick="tentarLogin()">Entrar →</button>
-    <div class="login-error" id="login-error"></div>
-    <div class="login-footer">Sem dados pessoais · Acesso por código</div>
-  </div>
-</div>
-
-<!-- =====================================================
-     CONTEÚDO PRINCIPAL (oculto até login)
-===================================================== -->
-<div id="app-content" style="display:none">
-
-<div class="header">
-  <div class="header-inner">
-    <div class="header-sub">Lisboa · Avenidas Novas · T1/T2 · até 350k</div>
-    <h1>Matriz de Escolha de Imóvel</h1>
-    <p>Compare até 4 imóveis com critérios ponderados. Preencha cada campo para calcular a pontuação final.</p>
-  </div>
-</div>
+<h1>Matriz de Escolha de Imóvel — Lisboa</h1>
 
 <div class="tabs">
-  <div class="tabs-inner">
-    <button class="tab-btn active" onclick="showTab('matrix')">Matriz de Avaliação</button>
-    <button class="tab-btn" onclick="showTab('weights')">Pesos dos Critérios</button>
-    <button class="tab-btn" onclick="showTab('pre1951')">⚠️ Imóveis Pré-1951</button>
-  </div>
+  <button class="tab-btn active" onclick="showTab('matrix')">Matriz</button>
+  <button class="tab-btn" onclick="showTab('weights')">Pesos</button>
+  <button class="tab-btn" onclick="showTab('pre1951')">Pré-1951</button>
 </div>
 
-<div class="main">
-  <div id="tab-matrix">
-    <div id="warning-banner" class="banner" style="display:none">
-      <div>
-        <div class="banner-title">⚠️ Um ou mais imóveis são anteriores a 1951</div>
-        <div class="banner-body">Consulte o separador "Imóveis Pré-1951" para perceber os riscos e particularidades legais.</div>
-      </div>
-      <button class="banner-close" onclick="document.getElementById('warning-banner').style.display='none'">×</button>
-    </div>
-    <div id="matrix-container"></div>
-  </div>
-
-  <div id="tab-weights" style="display:none">
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h2>Pesos dos Critérios</h2>
-          <p>Ajusta o peso de cada critério conforme as tuas prioridades. A pontuação final é atualizada em tempo real.</p>
-        </div>
-        <button class="repor-btn" onclick="resetWeights()">Repor valores</button>
-      </div>
-      <div id="weights-list"></div>
-      <div class="card-footer">
-        <span>Total de pontos</span>
-        <span id="total-weight-display">100</span>
-      </div>
-    </div>
-  </div>
-
-  <div id="tab-pre1951" style="display:none">
-    <div class="card">
-      <div class="warn-header">
-        <h2>⚠️ Imóveis anteriores a 7 de agosto de 1951</h2>
-        <p>Esta data corresponde à entrada em vigor do Regulamento Geral das Edificações Urbanas (RGEU). Imóveis anteriores têm um regime legal diferente — nem sempre problemático, mas com particularidades que tens de conhecer antes de comprar.</p>
-      </div>
-      <div class="warn-body">
-        <div class="warn-item" style="border-color:#f59e0b">
-          <div class="warn-item-title"><span>📄</span><strong>Licença de Utilização substituída por Certidão</strong></div>
-          <p>Imóveis anteriores a 1951 não precisam de licença de utilização. Em vez disso, o banco e a escritura requerem uma Certidão de Construção Anterior a 1951, emitida pela Câmara Municipal. Esta certidão confirma que o imóvel existia antes dessa data e que não sofreu alterações significativas desde então.</p>
-        </div>
-        <div class="warn-item" style="border-color:#ef4444">
-          <div class="warn-item-title"><span>🚨</span><strong>Obras posteriores podem invalidar a certidão</strong></div>
-          <p>Se o imóvel sofreu obras de ampliação, alteração de fachada ou reconstrução — mesmo que parcial — a Câmara pode recusar a certidão e exigir legalização das obras. A câmara faz normalmente uma visita de inspeção. Obras aparentemente simples (como fechar uma varanda ou alterar a planta interior) podem complicar o processo.</p>
-        </div>
-        <div class="warn-item" style="border-color:#f97316">
-          <div class="warn-item-title"><span>⚡</span><strong>Instalações elétricas e canalizações envelhecidas</strong></div>
-          <p>Imóveis desta época têm frequentemente instalações elétricas desatualizadas sem ligação à terra, canalização em ferro ou chumbo, e sistemas de aquecimento inexistentes ou muito antigos. Verifica a existência de certificação elétrica (CERTIEL) e exige uma inspeção técnica independente antes de avançar.</p>
-        </div>
-        <div class="warn-item" style="border-color:#8b5cf6">
-          <div class="warn-item-title"><span>🧱</span><strong>Estrutura: paredes e pavimentos antigos</strong></div>
-          <p>Construções anteriores a 1951 usam frequentemente paredes em tabique (madeira e estuque), alvenaria de pedra ou tijolo maciço. Pavimentos em soalho de madeira podem ter apodrecimento oculto. Pede sempre um relatório técnico de um engenheiro civil ou arquiteto antes de assinares o CPCV.</p>
-        </div>
-        <div class="warn-item" style="border-color:#2563eb">
-          <div class="warn-item-title"><span>🏦</span><strong>Financiamento bancário pode ser mais difícil</strong></div>
-          <p>Os bancos são mais cautelosos nestes imóveis. Sem a certidão da câmara (ou sem licença de utilização), o financiamento é tipicamente recusado. Mesmo com certidão, o banco pode exigir avaliação mais detalhada. Confirma com o banco antes de avançar para o CPCV.</p>
-        </div>
-        <div class="warn-item" style="border-color:#16a34a">
-          <div class="warn-item-title"><span>✅</span><strong>Proteções legais e benefícios fiscais</strong></div>
-          <p>O lado positivo: imóveis anteriores a 1951 têm proteção legal contra ordens de demolição baseadas em normas posteriores. Em zonas de reabilitação urbana, podem beneficiar de IVA a 6% em obras de reabilitação, isenção temporária de IMI e redução de IMT. Verifica se o imóvel está em ARU (Área de Reabilitação Urbana) junto à CML.</p>
-        </div>
-        <div class="green-box">
-          <div class="green-box-title">💡 Resumo prático</div>
-          <p>Um imóvel anterior a 1951 não é necessariamente mau negócio — mas exige mais diligência. Antes de assinar o CPCV: (1) confirma se a Câmara passa a certidão, (2) faz uma inspeção técnica independente, (3) confirma com o banco que o financiamento é viável, e (4) orça o custo real de obras de atualização das instalações.</p>
-        </div>
-      </div>
-    </div>
-  </div>
+<div id="tab-matrix" class="tab-content active">
+  <div id="properties-list"></div>
+  <button class="add-btn" onclick="addProp()">Adicionar Imóvel</button>
 </div>
 
-</div> <!-- /app-content -->
+<div id="tab-weights" class="tab-content">
+  <p>Aqui podes ajustar os pesos dos critérios (simplificado)</p>
+  <div id="weights-list"></div>
+  <button class="add-btn" onclick="resetWeights()">Reset Pesos</button>
+</div>
+
+<div id="tab-pre1951" class="tab-content">
+  <p>Conteúdo da tab Pré-1951 (informativo)</p>
+</div>
 
 <script>
-// =====================================================
-//  CÓDIGOS DE ACESSO — EDITA AQUI
-//  Para adicionar um código: acrescenta à lista abaixo
-//  Para remover: apaga a linha
-//  Guarda o ficheiro e faz upload novo no Netlify
-// =====================================================
-const CODIGOS_ACESSO = [
-  "cliente1",
-  "cliente2",
-  "cliente3",
-  "joao2024",
-  "maria2024",
-  // Adiciona mais códigos aqui, um por linha, entre aspas e com vírgula
-];
-// =====================================================
+  // ---- DADOS INICIAIS ----
+  let nextId = 1;
+  let properties = [];
+  const CRITERIA = [
+    {id: 'local', name: 'Localização', options: ['Mau', 'Médio', 'Bom', 'Excelente']},
+    {id: 'preco', name: 'Preço', options: ['Mau', 'Médio', 'Bom', 'Excelente']},
+    {id: 'tam', name: 'Tamanho', options: ['Pequeno', 'Médio', 'Grande']}
+  ];
+  let weights = {};
+  CRITERIA.forEach(c => weights[c.id] = 1);
 
-let tentativas = 0;
-
-function tentarLogin() {
-  const input = document.getElementById('codigo-input');
-  const erro = document.getElementById('login-error');
-  const codigo = input.value.trim().toLowerCase();
-
-  // Normaliza os códigos para comparação sem distinção maiúsculas/minúsculas
-  const valido = CODIGOS_ACESSO.some(c => c.toLowerCase() === codigo);
-
-  if (valido) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-content').style.display = '';
-    render();
-  } else {
-    tentativas++;
-    input.classList.add('error');
-    erro.textContent = tentativas >= 3
-      ? 'Código incorreto. Verifica o código que recebeste.'
-      : 'Código incorreto. Tenta novamente.';
-    setTimeout(() => input.classList.remove('error'), 400);
-    input.value = '';
-    input.focus();
+  // ---- FUNÇÕES ----
+  function showTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    event.currentTarget.classList.add('active');
   }
-}
 
-// Foco automático no campo ao carregar
-window.addEventListener('load', () => {
-  document.getElementById('codigo-input').focus();
-});
-</script>
-
-<script>
-const CRITERIA = [
-  { id:"preco",       label:"Preço",                   icon:"€",   defaultWeight:20, description:"Valor pedido vs. orçamento máximo",        options:[{label:"≤ 270k",score:10},{label:"271k–300k",score:8},{label:"301k–325k",score:5},{label:"326k–350k",score:2},{label:"> 350k",score:0}] },
-  { id:"tipologia",   label:"Tipologia",               icon:"🏠",  defaultWeight:8,  description:"T1 ou T2 para Lisboa / Avenidas Novas",     options:[{label:"T2",score:10},{label:"T1 grande (>55m²)",score:7},{label:"T1 standard",score:5},{label:"T0 / Estúdio",score:2}] },
-  { id:"metro",       label:"Distância ao Metro",      icon:"🚇",  defaultWeight:18, description:"A pé, em minutos",                          options:[{label:"< 3 min",score:10},{label:"3–7 min",score:8},{label:"8–12 min",score:5},{label:"13–20 min",score:2},{label:"> 20 min",score:0}] },
-  { id:"supermercado",label:"Distância ao Supermercado",icon:"🛒", defaultWeight:10, description:"A pé, em minutos",                          options:[{label:"< 3 min",score:10},{label:"3–7 min",score:8},{label:"8–12 min",score:5},{label:"13–20 min",score:2},{label:"> 20 min",score:0}] },
-  { id:"antiguidade", label:"Ano de Construção",       icon:"🏗️", defaultWeight:15, description:"Impacto em obras, licenças e estado geral", options:[{label:"Novo (< 5 anos)",score:10},{label:"Recente (2000–2019)",score:8},{label:"Pós-1991",score:6},{label:"1951–1991",score:4},{label:"Anterior a 1951 ⚠️",score:2}], warning:true },
-  { id:"estado",      label:"Estado de Conservação",   icon:"🔧",  defaultWeight:12, description:"Necessidade de obras imediatas",             options:[{label:"Excelente / Renovado",score:10},{label:"Bom estado",score:7},{label:"Obras menores",score:4},{label:"Obras significativas",score:1}] },
-  { id:"energetico",  label:"Classe Energética",       icon:"⚡",  defaultWeight:8,  description:"Certificado energético ADENE",               options:[{label:"A+ ou A",score:10},{label:"B",score:7},{label:"B-",score:5},{label:"C ou D",score:3},{label:"E ou F",score:0}] },
-  { id:"exposicao",   label:"Exposição Solar",          icon:"☀️", defaultWeight:5,  description:"Orientação e luminosidade",                 options:[{label:"Sul / Poente",score:10},{label:"Este / Sul-Este",score:7},{label:"Nascente",score:5},{label:"Norte",score:2}] },
-  { id:"piso",        label:"Piso / Elevador",          icon:"🔼", defaultWeight:4,  description:"Acessibilidade e vistas",                   options:[{label:"Andar alto com elevador",score:10},{label:"2.º–3.º com elevador",score:8},{label:"R/C ou 1.º (sem elevador)",score:5},{label:"Andar alto sem elevador",score:1}] },
-];
-
-const SCORE_COLORS = [
-  { min:80, label:"Excelente", color:"#22c55e", bg:"#f0fdf4", bar:"#16a34a" },
-  { min:65, label:"Bom",       color:"#84cc16", bg:"#f7fee7", bar:"#65a30d" },
-  { min:50, label:"Razoável",  color:"#eab308", bg:"#fefce8", bar:"#ca8a04" },
-  { min:35, label:"Fraco",     color:"#f97316", bg:"#fff7ed", bar:"#ea580c" },
-  { min:0,  label:"Mau",       color:"#ef4444", bg:"#fef2f2", bar:"#dc2626" },
-];
-
-function getScoreInfo(s) { return SCORE_COLORS.find(c => s >= c.min); }
-
-// State
-let properties = [
-  { id:1, name:"Imóvel 1", selections:{} },
-  { id:2, name:"Imóvel 2", selections:{} },
-];
-let weights = Object.fromEntries(CRITERIA.map(c => [c.id, c.defaultWeight]));
-let nextId = 3;
-
-function totalWeight() { return Object.values(weights).reduce((a,b)=>a+b,0); }
-
-function calcScore(prop) {
-  const filled = Object.keys(prop.selections).length;
-  if (filled === 0) return null;
-  let total = 0;
-  const tw = totalWeight();
-  CRITERIA.forEach(c => {
-    const sel = prop.selections[c.id];
-    if (sel !== undefined) total += (c.options[sel].score / 10) * weights[c.id];
-  });
-  return Math.round((total / tw) * 100);
-}
-
-function scores() { return properties.map(p => ({ id:p.id, score:calcScore(p) })); }
-function bestScore() {
-  const valid = scores().filter(s => s.score !== null).map(s => s.score);
-  return valid.length ? Math.max(...valid) : null;
-}
-
-// ---- RENDER ----
-function render() {
-  renderMatrix();
-  renderWeights();
-}
-
-function renderMatrix() {
-  const n = properties.length;
-  const cols = 200px repeat(${n}, 1fr);
-  const best = bestScore();
-  const allScores = scores();
-  let html = '';
-
-  // Score summary row
-  html += <div style="display:grid;grid-template-columns:${cols};gap:12px;margin-bottom:20px;">;
-  html += <div class="score-label-cell">Pontuação final (0–100)</div>;
-  properties.forEach(prop => {
-    const sc = calcScore(prop);
-    const info = sc !== null ? getScoreInfo(sc) : null;
-    const isBest = sc !== null && sc === best && properties.filter(p=>calcScore(p)!==null).length > 1;
-    html += <div class="score-card${isBest?' best':''}" style="${info?'background:'+info.bg+';':''} ${isBest?'border-color:'+info.bar+';':''}">;
-    if (isBest) html += <div class="best-badge" style="background:${info.bar}">Melhor</div>;
-    html += <div class="score-num" style="color:${info?info.color:'#9ca3af'}">${sc!==null?sc:'—'}</div>;
-    if (info) html += <div class="score-label" style="color:${info.bar}">${info.label}</div>;
-    if (sc !== null) html += <div class="score-bar-wrap"><div class="score-bar" style="width:${sc}%;background:${info.bar}"></div></div>;
-    html += </div>;
-  });
-  html += </div>;
-
-  // Name row
-  html += <div style="display:grid;grid-template-columns:${cols};gap:12px;margin-bottom:10px;">;
-  html += <div class="name-label">Critério / Peso</div>;
-  properties.forEach(prop => {
-    html += <div class="name-cell">;
-    html += <input class="name-input" value="${escHtml(prop.name)}" oninput="updateName(${prop.id},this.value)" />;
-    if (properties.length > 1) html += <button class="remove-btn" onclick="removeProp(${prop.id})" title="Remover">×</button>;
-    html += </div>;
-  });
-  html += </div>;
-
-  // Criteria rows
-  CRITERIA.forEach((c, ci) => {
-    html += <div class="criterion-row" style="grid-template-columns:${cols};">;
-    // Label
-    html += `<div class="criterion-label">
-      <div class="criterion-title">
-        <span style="font-size:16px">${c.icon}</span>
-        <span class="criterion-name">${c.label}</span>
-        <span class="weight-badge">${weights[c.id]}pts</span>
-      </div>
-      <div class="criterion-desc">${c.description}</div>
-    </div>`;
-    // Options per property
-    properties.forEach(prop => {
-      const sel = prop.selections[c.id];
-      const cScore = sel !== undefined ? c.options[sel].score : null;
-      html += <div class="options-cell">;
-      c.options.forEach((opt, oi) => {
-        const isSelected = sel === oi;
-        const isWarn = c.warning && oi === c.options.length - 1;
-        let cls = 'opt-btn';
-        if (isSelected) cls += isWarn ? ' selected warning' : ' selected';
-        const scoreColor = isSelected ? (isWarn?'#92400e':'#c8a951') : '#9ca3af';
-        html += `<button class="${cls}" onclick="selectOpt(${prop.id},'${c.id}',${oi},${c.warning?'true':'false'})">
-          <span>${escHtml(opt.label)}</span>
-          <span class="opt-score" style="color:${scoreColor}">${opt.score}/10</span>
-        </button>`;
+  function renderMatrix() {
+    const container = document.getElementById('properties-list');
+    container.innerHTML = '';
+    properties.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'property-row';
+      row.innerHTML = `
+        <input class="property-input" value="${p.name}" oninput="updateName(${p.id}, this.value)">
+        <span class="remove-btn" onclick="removeProp(${p.id})">✕</span>
+      `;
+      CRITERIA.forEach(c => {
+        const div = document.createElement('div');
+        c.options.forEach((opt, i) => {
+          const btn = document.createElement('button');
+          btn.textContent = opt;
+          btn.className = 'option-btn' + (p.selections[c.id]===i?' selected':'');
+          btn.onclick = () => selectOpt(p.id, c.id, i);
+          div.appendChild(btn);
+        });
+        row.appendChild(div);
       });
-      if (cScore !== null) {
-        const contrib = ((cScore/10)*weights[c.id]).toFixed(1);
-        html += <div class="contrib">contribui ${contrib} pts</div>;
-      }
-      html += </div>;
+      container.appendChild(row);
     });
-    html += </div>;
-  });
-
-  // Add property button
-  if (properties.length < 4) {
-    html += <button class="add-btn" onclick="addProp()">+ Adicionar Imóvel</button>;
   }
-  html += <div class="reset-wrap"><button class="reset-link" onclick="clearAll()">Limpar todas as seleções</button></div>;
 
-  document.getElementById('matrix-container').innerHTML = html;
-}
-
-function renderWeights() {
-  const tw = totalWeight();
-  let html = '';
-  CRITERIA.forEach((c, i) => {
-    const w = weights[c.id];
-    const pct = tw > 0 ? Math.round((w/tw)*100) : 0;
-    html += `<div class="weight-row">
-      <span class="weight-icon">${c.icon}</span>
-      <div class="weight-info">
-        <div class="weight-top">
-          <span>${c.label}</span>
-          <span>${w} pts<span class="weight-pct">(${pct}% do total)</span></span>
-        </div>
-        <input type="range" class="weight-slider" min="0" max="30" step="1" value="${w}"
-          oninput="updateWeight('${c.id}',this.value)" />
-        <div class="weight-ticks"><span>0</span><span>10</span><span>20</span><span>30</span></div>
-      </div>
-    </div>`;
-  });
-  document.getElementById('weights-list').innerHTML = html;
-  document.getElementById('total-weight-display').textContent = tw;
-}
-
-// ---- ACTIONS ----
-function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function showTab(tab) {
-  ['matrix','weights','pre1951'].forEach(t => {
-    document.getElementById('tab-'+t).style.display = t===tab?'':'none';
-  });
-  document.querySelectorAll('.tab-btn').forEach((btn,i) => {
-    btn.classList.toggle('active', ['matrix','weights','pre1951'][i]===tab);
-  });
-}
-
-function updateName(id, val) {
-  properties = properties.map(p => p.id===id ? {...p, name:val} : p);
-  renderMatrix();
-}
-
-function selectOpt(propId, criterionId, optIdx, isWarning) {
-  properties = properties.map(p => {
-    if (p.id !== propId) return p;
-    return { ...p, selections: { ...p.selections, [criterionId]: optIdx } };
-  });
-  const c = CRITERIA.find(c => c.id === criterionId);
-  if (isWarning && optIdx === c.options.length - 1) {
-    document.getElementById('warning-banner').style.display = '';
+  function addProp() {
+    if(properties.length >= 4) return;
+    properties.push({id: nextId++, name: `Imóvel ${nextId}`, selections: {}});
+    renderMatrix();
   }
-  renderMatrix();
-}
 
-function addProp() {
-  if (properties.length >= 4) return;
-  properties = [...properties, { id:nextId, name:Imóvel ${nextId}, selections:{} }];
-  nextId++;
-  renderMatrix();
-}
+  function removeProp(id) {
+    if(properties.length <= 1) return;
+    properties = properties.filter(p => p.id !== id);
+    renderMatrix();
+  }
 
-function removeProp(id) {
-  if (properties.length <= 1) return;
-  properties = properties.filter(p => p.id !== id);
-  renderMatrix();
-}
+  function updateName(id, val) {
+    properties = properties.map(p => p.id===id ? {...p, name:val} : p);
+  }
 
-function clearAll() {
-  properties = properties.map(p => ({...p, selections:{}}));
-  renderMatrix();
-}
+  function selectOpt(propId, criterionId, optIdx) {
+    properties = properties.map(p => p.id===propId ? {...p, selections:{...p.selections, [criterionId]: optIdx}} : p);
+    renderMatrix();
+  }
 
-function updateWeight(id, val) {
-  weights[id] = Number(val);
-  // Update weight badge in matrix without full re-render for smoothness
-  renderMatrix();
+  function renderWeights() {
+    const container = document.getElementById('weights-list');
+    container.innerHTML = '';
+    CRITERIA.forEach(c => {
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <label>${c.name}: <input type="number" min="0" max="10" value="${weights[c.id]}" onchange="updateWeight('${c.id}', this.value)"></label>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function updateWeight(id, val) {
+    weights[id] = Number(val);
+    renderMatrix();
+  }
+
+  function resetWeights() {
+    CRITERIA.forEach(c => weights[c.id] = 1);
+    renderWeights();
+    renderMatrix();
+  }
+
+  // ---- INIT ----
+  addProp();
   renderWeights();
-}
-
-function resetWeights() {
-  weights = Object.fromEntries(CRITERIA.map(c => [c.id, c.defaultWeight]));
-  renderMatrix();
-  renderWeights();
-}
-
-// Init — chamado após login
-// render() é chamado pelo login screen
 </script>
-</body>
 
+</body>
 </html>
