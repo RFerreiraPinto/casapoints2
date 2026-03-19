@@ -3,148 +3,983 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Matriz de Escolha de Imóvel — Lisboa</title>
+<title>Matriz de Imóveis — Lisboa</title>
+
+<!-- Google Fonts: elegant serif + clean geometric -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
 <style>
-body { font-family: Georgia, serif; background: #f8f7f4; color: #1a1a1a; padding: 20px; }
-h1 { margin-bottom: 20px; }
-.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-.tab-btn { padding: 10px 15px; cursor: pointer; border: 1px solid #ccc; border-bottom: none; background: #fff; }
-.tab-btn.active { background: #c8a951; color: #fff; font-weight: bold; }
-.tab-content { border: 1px solid #ccc; padding: 15px; background: #fff; display: none; }
-.tab-content.active { display: block; }
-.property-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
-.property-input { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-.remove-btn { cursor: pointer; color: #ef4444; font-weight: bold; }
-.option-btn { padding: 4px 8px; margin-right: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; }
-.option-btn.selected { background: #1a1a2e; color: #c8a951; font-weight: bold; }
-.add-btn { padding: 6px 10px; margin-top: 10px; cursor: pointer; border: 1px dashed #c8a951; background: #fefce8; }
+/* ─────────────────────────────────────────────
+   CSS VARIABLES & RESET
+───────────────────────────────────────────── */
+:root {
+  --bg:        #f4f1ec;
+  --surface:   #ffffff;
+  --border:    #ddd8ce;
+  --text:      #1c1917;
+  --muted:     #78716c;
+  --gold:      #b8975a;
+  --gold-lt:   #f0e4cc;
+  --gold-dk:   #8a6e3a;
+  --green:     #4a7c59;
+  --red:       #c0392b;
+  --shadow:    0 2px 12px rgba(0,0,0,0.08);
+  --radius:    10px;
+  --tab-h:     44px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* ─────────────────────────────────────────────
+   HEADER
+───────────────────────────────────────────── */
+header {
+  background: var(--text);
+  color: #fff;
+  padding: 22px 32px 18px;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 3px solid var(--gold);
+}
+
+header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
+
+header span {
+  font-size: 0.78rem;
+  color: var(--gold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────
+   TABS
+───────────────────────────────────────────── */
+.tabs-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 32px;
+  gap: 0;
+}
+
+.tab-btn {
+  height: var(--tab-h);
+  padding: 0 22px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted);
+  transition: color 0.18s, border-color 0.18s;
+  position: relative;
+  top: 1px;
+}
+
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active {
+  color: var(--gold-dk);
+  border-bottom-color: var(--gold);
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────
+   MAIN CONTENT AREA
+───────────────────────────────────────────── */
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─────────────────────────────────────────────
+   MATRIZ TAB
+───────────────────────────────────────────── */
+
+/* Toolbar above the cards */
+.matrix-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.matrix-toolbar p {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--gold);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-add:hover { background: var(--gold-dk); }
+.btn-add:active { transform: scale(0.97); }
+.btn-add:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Property cards grid */
+.properties-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+/* Single property card */
+.prop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 20px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  animation: fadeIn 0.22s ease;
+  transition: box-shadow 0.15s;
+}
+.prop-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Card header: name input + remove btn */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prop-name-input {
+  flex: 1;
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-bottom: 2px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 2px 0 4px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.prop-name-input:focus { border-bottom-color: var(--gold); }
+.prop-name-input::placeholder { color: #c0b9b0; font-weight: 400; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
+
+.btn-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #bbb;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-remove:hover { color: var(--red); background: #fdf0ee; }
+
+/* Score badge */
+.score-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.score-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: #eee;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-dk));
+  transition: width 0.4s ease;
+}
+
+.score-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold-dk);
+  min-width: 38px;
+  text-align: right;
+  letter-spacing: 0.02em;
+}
+
+/* Criteria section inside card */
+.criteria-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.criterion-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+/* Option pill buttons */
+.options-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.opt-btn {
+  padding: 4px 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.14s;
+  white-space: nowrap;
+}
+.opt-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold-dk);
+  background: var(--gold-lt);
+}
+.opt-btn.selected {
+  background: var(--text);
+  color: #fff;
+  border-color: var(--text);
+  font-weight: 600;
+}
+
+/* Card reset link */
+.card-reset {
+  font-size: 0.73rem;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  padding: 0;
+  text-align: left;
+  transition: color 0.12s;
+}
+.card-reset:hover { color: var(--red); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.9rem; }
+
+/* ─────────────────────────────────────────────
+   PESOS TAB
+───────────────────────────────────────────── */
+.weights-panel {
+  max-width: 520px;
+}
+
+.weights-panel h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  margin-bottom: 6px;
+}
+.weights-panel .intro {
+  font-size: 0.84rem;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.weight-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+
+.weight-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.weight-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.weight-value-badge {
+  background: var(--gold-lt);
+  color: var(--gold-dk);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 2px 10px;
+  border-radius: 99px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.weight-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 99px;
+  background: #e8e2d8;
+  outline: none;
+  cursor: pointer;
+}
+.weight-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: background 0.15s;
+}
+.weight-slider::-webkit-slider-thumb:hover { background: var(--gold-dk); }
+.weight-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+  border: 2px solid #fff;
+}
+
+.weight-options-info {
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+.btn-reset-weights {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-reset-weights:hover {
+  border-color: var(--gold);
+  color: var(--gold-dk);
+  background: var(--gold-lt);
+}
+
+/* ─────────────────────────────────────────────
+   PRÉ-1951 TAB
+───────────────────────────────────────────── */
+.pre1951-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 4px;
+}
+
+.info-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px;
+  box-shadow: var(--shadow);
+}
+
+.info-card .ic-icon {
+  font-size: 1.6rem;
+  margin-bottom: 10px;
+}
+
+.info-card h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.info-card p, .info-card li {
+  font-size: 0.83rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.info-card ul {
+  padding-left: 16px;
+  margin-top: 6px;
+}
+
+.info-card li { margin-bottom: 4px; }
+
+.info-card.highlight {
+  border-left: 4px solid var(--gold);
+  background: #fffef9;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.tag.warning { background: #fef3c7; color: #92400e; }
+.tag.info    { background: #dbeafe; color: #1e40af; }
+.tag.gold    { background: var(--gold-lt); color: var(--gold-dk); }
+.tag.green   { background: #d1fae5; color: #065f46; }
+
+/* ─────────────────────────────────────────────
+   SECTION HEADINGS
+───────────────────────────────────────────── */
+.section-heading {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.section-sub {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+
+/* ─────────────────────────────────────────────
+   RESPONSIVENESS
+───────────────────────────────────────────── */
+@media (max-width: 600px) {
+  header { padding: 16px 16px 14px; }
+  header h1 { font-size: 1.2rem; }
+  .tabs-bar { padding: 0 10px; }
+  .tab-btn { padding: 0 14px; font-size: 0.8rem; }
+  main { padding: 18px 12px 50px; }
+  .matrix-toolbar { flex-direction: column; align-items: flex-start; }
+  .properties-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 
-<h1>Matriz de Escolha de Imóvel — Lisboa</h1>
+<!-- ═══════════════════════════════════════
+     HEADER
+════════════════════════════════════════ -->
+<header>
+  <h1>Matriz de Imóveis</h1>
+  <span>Lisboa · Decisão de Compra</span>
+</header>
 
-<div class="tabs">
-  <button class="tab-btn active" onclick="showTab('matrix', event)">Matriz</button>
-  <button class="tab-btn" onclick="showTab('weights', event)">Pesos</button>
-  <button class="tab-btn" onclick="showTab('pre1951', event)">Pré-1951</button>
+<!-- ═══════════════════════════════════════
+     TABS BAR
+════════════════════════════════════════ -->
+<div class="tabs-bar" role="tablist">
+  <button class="tab-btn active" role="tab" aria-selected="true"  onclick="switchTab('matriz', this)">🏠 Matriz</button>
+  <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('pesos', this)">⚖️ Pesos</button>
+  <button class="tab-btn"        role="tab" aria-selected="false" onclick="switchTab('pre1951', this)">📜 Pré-1951</button>
 </div>
 
-<div id="tab-matrix" class="tab-content active">
-  <div id="properties-list"></div>
-  <button class="add-btn" onclick="addProp()">Adicionar Imóvel</button>
-</div>
+<!-- ═══════════════════════════════════════
+     MAIN
+════════════════════════════════════════ -->
+<main>
 
-<div id="tab-weights" class="tab-content">
-  <p>Aqui podes ajustar os pesos dos critérios:</p>
-  <div id="weights-list"></div>
-  <button class="add-btn" onclick="resetWeights()">Reset Pesos</button>
-</div>
+  <!-- ─────── TAB: MATRIZ ─────── -->
+  <section id="panel-matriz" class="tab-panel active" role="tabpanel">
+    <div class="matrix-toolbar">
+      <div>
+        <div class="section-heading">Comparação de Imóveis</div>
+        <p class="section-sub">Avalia até 4 imóveis pelos critérios definidos. Clica nas opções para pontuar.</p>
+      </div>
+      <button class="btn-add" id="btn-add-prop" onclick="addProperty()">
+        + Adicionar Imóvel
+      </button>
+    </div>
 
-<div id="tab-pre1951" class="tab-content">
-  <p>Conteúdo da tab Pré-1951 (informativo)</p>
-</div>
+    <!-- Cards are rendered here by JS -->
+    <div class="properties-grid" id="properties-grid"></div>
+  </section>
 
+  <!-- ─────── TAB: PESOS ─────── -->
+  <section id="panel-pesos" class="tab-panel" role="tabpanel">
+    <div class="weights-panel">
+      <div class="section-heading">Ajustar Pesos dos Critérios</div>
+      <p class="intro">
+        Cada critério tem um peso que multiplica a sua pontuação. Um peso de <strong>3</strong> significa que esse critério vale 3× mais. Arrasta os sliders para calibrar a tua decisão.
+      </p>
+      <!-- Weight items rendered by JS -->
+      <div id="weights-list"></div>
+      <button class="btn-reset-weights" onclick="resetWeights()">↺ Repor Pesos Padrão</button>
+    </div>
+  </section>
+
+  <!-- ─────── TAB: PRÉ-1951 ─────── -->
+  <section id="panel-pre1951" class="tab-panel" role="tabpanel">
+    <div class="section-heading">Imóveis Anteriores a 1951</div>
+    <p class="section-sub">O que precisas de saber antes de comprar um imóvel antigo em Lisboa.</p>
+
+    <div class="pre1951-grid">
+
+      <div class="info-card highlight">
+        <div class="ic-icon">📋</div>
+        <div class="tag gold">Definição</div>
+        <h3>O que é um imóvel Pré-1951?</h3>
+        <p>São imóveis cuja construção ficou concluída antes de 1951. Em Lisboa, representam grande parte do parque habitacional das zonas históricas, incluindo Alfama, Mouraria, Intendente e Mouraria.</p>
+      </div>
+
+      <div class="info-card">
+        <div class="ic-icon">🏛️</div>
+        <div class="tag info">Regime Legal</div>
+        <h3>Arrendamento & Renda Antiga</h3>
+        <ul>
+          <li>Podem estar sujeitos ao <strong>NRAU</strong> (Novo Regime do Arrendamento Urbano)</li>
+          <li>Inquilinos com contratos antigos têm proteção especial</li>
+          <li>Actualização de renda pode ser faseada ou condicionada</li>
+          <li>Despejos são processos mais morosos</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <div class="ic-icon">🔧</div>
+        <div class="tag warning">Atenção</div>
+        <h3>Estado de Conservação</h3>
+        <ul>
+          <li>Inspeciona instalações eléctricas (podem ser muito antigas)</li>
+          <li>Verifica canalização e humidades estruturais</li>
+          <li>Coberturas e caleiras frequentemente degradadas</li>
+          <li>Pede relatório de inspecção técnica independente</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <div class="ic-icon">🏗️</div>
+        <div class="tag warning">Obras</div>
+        <h3>Reabilitação Urbana</h3>
+        <ul>
+          <li>Em ARU (Área de Reabilitação Urbana): possíveis incentivos fiscais</li>
+          <li>Obras exteriores sujeitas a aprovação camarária</li>
+          <li>Fachadas e cobertura podem ter condicionantes patrimoniais</li>
+          <li>Orçamenta obras antes de fechar negócio</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <div class="ic-icon">💰</div>
+        <div class="tag green">Fiscalidade</div>
+        <h3>Benefícios Fiscais Possíveis</h3>
+        <ul>
+          <li>IVA reduzido (6%) em obras de reabilitação elegíveis</li>
+          <li>IMI reduzido em imóveis reabilitados em ARU</li>
+          <li>Dedução em IRS de juros de crédito para reabilitação</li>
+          <li>Verifica elegibilidade com AT / Câmara Municipal</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <div class="ic-icon">📐</div>
+        <div class="tag info">Documentação</div>
+        <h3>Documentos a Solicitar</h3>
+        <ul>
+          <li>Caderneta Predial (Finanças)</li>
+          <li>Certidão de Teor (Registo Predial)</li>
+          <li>Licença de Habitabilidade (ou Uso e Habitação)</li>
+          <li>Declaração de não existência de rendas antigas</li>
+          <li>Certificado Energético (mín. F para pré-1951)</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════ -->
 <script>
-// ---- DADOS ----
-let nextId = 1;
-let properties = JSON.parse(localStorage.getItem('properties') || '[]');
+/* ─────────────────────────────────────────────
+   1. DADOS / CONFIGURAÇÃO
+   Define os critérios, as suas opções e pontuações.
+───────────────────────────────────────────── */
 const CRITERIA = [
-  {id: 'local', name: 'Localização', options: ['Mau','Médio','Bom','Excelente']},
-  {id: 'preco', name: 'Preço', options: ['Mau','Médio','Bom','Excelente']},
-  {id: 'tam', name: 'Tamanho', options: ['Pequeno','Médio','Grande']}
+  {
+    id: 'localizacao',
+    name: 'Localização',
+    emoji: '📍',
+    options: [
+      { label: 'Mau',       score: 0 },
+      { label: 'Médio',     score: 1 },
+      { label: 'Bom',       score: 2 },
+      { label: 'Excelente', score: 3 }
+    ]
+  },
+  {
+    id: 'preco',
+    name: 'Preço',
+    emoji: '💶',
+    options: [
+      { label: 'Caro',        score: 0 },
+      { label: 'Razoável',    score: 1 },
+      { label: 'Bom preço',   score: 2 },
+      { label: 'Oportunidade',score: 3 }
+    ]
+  },
+  {
+    id: 'tamanho',
+    name: 'Tamanho',
+    emoji: '📐',
+    options: [
+      { label: 'Pequeno', score: 1 },
+      { label: 'Médio',   score: 2 },
+      { label: 'Grande',  score: 3 }
+    ]
+  }
 ];
-let weights = JSON.parse(localStorage.getItem('weights') || '{}');
-if(Object.keys(weights).length===0) CRITERIA.forEach(c => weights[c.id]=1);
 
-// ---- FUNÇÕES ----
-function saveData() {
-  localStorage.setItem('properties', JSON.stringify(properties));
-  localStorage.setItem('weights', JSON.stringify(weights));
+// Pontuação máxima possível por critério (sem peso): max score das options
+const MAX_SCORES = {};
+CRITERIA.forEach(c => {
+  MAX_SCORES[c.id] = Math.max(...c.options.map(o => o.score));
+});
+
+/* ─────────────────────────────────────────────
+   2. ESTADO DA APLICAÇÃO
+   Carregado do localStorage; inicializado se vazio.
+───────────────────────────────────────────── */
+let nextId = 1;
+
+// Carrega imóveis guardados ou cria um vazio
+let properties = [];
+try {
+  const saved = JSON.parse(localStorage.getItem('imoveis_props') || '[]');
+  if (Array.isArray(saved) && saved.length > 0) {
+    properties = saved;
+    // Garante que o nextId não colide com ids guardados
+    nextId = Math.max(...saved.map(p => p.id)) + 1;
+  }
+} catch(e) { properties = []; }
+
+// Carrega pesos guardados ou usa padrão 2
+let weights = {};
+try {
+  const sw = JSON.parse(localStorage.getItem('imoveis_weights') || '{}');
+  CRITERIA.forEach(c => {
+    weights[c.id] = (typeof sw[c.id] === 'number') ? sw[c.id] : 2;
+  });
+} catch(e) {
+  CRITERIA.forEach(c => weights[c.id] = 2);
 }
 
-function showTab(tab, event) {
-  document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.remove('active'));
-  if(event) event.currentTarget.classList.add('active');
+/* ─────────────────────────────────────────────
+   3. PERSISTÊNCIA
+───────────────────────────────────────────── */
+function saveAll() {
+  localStorage.setItem('imoveis_props',    JSON.stringify(properties));
+  localStorage.setItem('imoveis_weights',  JSON.stringify(weights));
 }
 
+/* ─────────────────────────────────────────────
+   4. CÁLCULO DE PONTUAÇÃO
+   Soma (score_opção × peso) para cada critério.
+   Normaliza para 0–100 para a barra visual.
+───────────────────────────────────────────── */
+function calcScore(prop) {
+  let total = 0;
+  let maxTotal = 0;
+
+  CRITERIA.forEach(c => {
+    const w = weights[c.id] || 1;
+    const sel = prop.selections?.[c.id]; // índice da opção selecionada
+    if (typeof sel === 'number') {
+      total += c.options[sel].score * w;
+    }
+    maxTotal += MAX_SCORES[c.id] * w;
+  });
+
+  const pct = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+  return { total, maxTotal, pct };
+}
+
+/* ─────────────────────────────────────────────
+   5. MUDANÇA DE TAB
+───────────────────────────────────────────── */
+function switchTab(name, btn) {
+  // Esconde todos os painéis e desativa botões
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  // Ativa o painel e o botão correcto
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+}
+
+/* ─────────────────────────────────────────────
+   6. ADICIONAR / REMOVER IMÓVEL
+───────────────────────────────────────────── */
+function addProperty() {
+  if (properties.length >= 4) return;
+  properties.push({ id: nextId++, name: '', selections: {} });
+  saveAll();
+  renderMatrix();
+}
+
+function removeProperty(id) {
+  properties = properties.filter(p => p.id !== id);
+  saveAll();
+  renderMatrix();
+}
+
+function resetProperty(id) {
+  properties = properties.map(p =>
+    p.id === id ? { ...p, selections: {} } : p
+  );
+  saveAll();
+  renderMatrix();
+}
+
+/* ─────────────────────────────────────────────
+   7. ACTUALIZAR NOME
+───────────────────────────────────────────── */
+function updateName(id, val) {
+  properties = properties.map(p =>
+    p.id === id ? { ...p, name: val } : p
+  );
+  saveAll();
+}
+
+/* ─────────────────────────────────────────────
+   8. SELECCIONAR OPÇÃO DE CRITÉRIO
+───────────────────────────────────────────── */
+function selectOption(propId, criterionId, optIdx) {
+  properties = properties.map(p =>
+    p.id === propId
+      ? { ...p, selections: { ...p.selections, [criterionId]: optIdx } }
+      : p
+  );
+  saveAll();
+  // Actualiza apenas o card afectado para evitar re-render total
+  renderMatrix();
+}
+
+/* ─────────────────────────────────────────────
+   9. RENDER DA MATRIZ
+   Cria os cards HTML de raiz.
+───────────────────────────────────────────── */
 function renderMatrix() {
-  const container = document.getElementById('properties-list');
-  container.innerHTML = '';
-  properties.forEach(p=>{
-    const row = document.createElement('div');
-    row.className='property-row';
-    row.innerHTML=`<input class="property-input" value="${p.name}" oninput="updateName(${p.id}, this.value)">
-                   <span class="remove-btn" onclick="removeProp(${p.id})">✕</span>`;
-    CRITERIA.forEach(c=>{
-      const div=document.createElement('div');
-      c.options.forEach((opt,i)=>{
-        const btn=document.createElement('button');
-        btn.textContent=opt;
-        btn.className='option-btn'+(p.selections?.[c.id]===i?' selected':'');
-        btn.onclick=()=>{ selectOpt(p.id,c.id,i); };
-        div.appendChild(btn);
-      });
-      row.appendChild(div);
-    });
-    container.appendChild(row);
-  });
+  const grid = document.getElementById('properties-grid');
+  const addBtn = document.getElementById('btn-add-prop');
+
+  // Botão de adicionar: desactivado quando já há 4 imóveis
+  addBtn.disabled = properties.length >= 4;
+
+  // Estado vazio
+  if (properties.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="icon">🏠</div>
+        <p>Nenhum imóvel adicionado. Clica em <strong>"+ Adicionar Imóvel"</strong> para começar.</p>
+      </div>`;
+    return;
+  }
+
+  // Gera o HTML de cada card
+  grid.innerHTML = properties.map(prop => {
+    const { pct } = calcScore(prop);
+
+    // Linhas de critérios
+    const criteriaHtml = CRITERIA.map(c => {
+      const optionsHtml = c.options.map((opt, i) => {
+        const isSel = prop.selections?.[c.id] === i;
+        return `<button
+          class="opt-btn${isSel ? ' selected' : ''}"
+          onclick="selectOption(${prop.id}, '${c.id}', ${i})"
+          title="${c.name}: ${opt.label}"
+        >${opt.label}</button>`;
+      }).join('');
+
+      return `
+        <div>
+          <div class="criterion-label">${c.emoji} ${c.name}</div>
+          <div class="options-row">${optionsHtml}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="prop-card" id="card-${prop.id}">
+        <!-- Nome + Remover -->
+        <div class="card-header">
+          <input
+            class="prop-name-input"
+            type="text"
+            value="${escHtml(prop.name)}"
+            placeholder="Nome do imóvel…"
+            maxlength="40"
+            oninput="updateName(${prop.id}, this.value)"
+          >
+          <button class="btn-remove" onclick="removeProperty(${prop.id})" title="Remover imóvel">✕</button>
+        </div>
+
+        <!-- Barra de pontuação -->
+        <div class="score-area">
+          <div class="score-bar-wrap">
+            <div class="score-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="score-badge">${pct}%</div>
+        </div>
+
+        <!-- Critérios -->
+        <div class="criteria-section">
+          ${criteriaHtml}
+        </div>
+
+        <!-- Limpar seleções -->
+        <button class="card-reset" onclick="resetProperty(${prop.id})">
+          ↺ Limpar selecções
+        </button>
+      </div>`;
+  }).join('');
 }
 
-function addProp() {
-  if(properties.length>=4) return;
-  properties.push({id: nextId++, name:`Imóvel ${nextId}`, selections:{}});
-  saveData();
-  renderMatrix();
-}
-
-function removeProp(id) {
-  if(properties.length<=1) return;
-  properties = properties.filter(p=>p.id!==id);
-  saveData();
-  renderMatrix();
-}
-
-function updateName(id,val) {
-  properties=properties.map(p=>p.id===id?{...p,name:val}:p);
-  saveData();
-}
-
-function selectOpt(propId,criterionId,optIdx) {
-  properties=properties.map(p=>p.id===propId?{...p,selections:{...p.selections,[criterionId]:optIdx}}:p);
-  saveData();
-  renderMatrix();
-}
-
+/* ─────────────────────────────────────────────
+   10. RENDER DOS PESOS
+───────────────────────────────────────────── */
 function renderWeights() {
-  const container=document.getElementById('weights-list');
-  container.innerHTML='';
-  CRITERIA.forEach(c=>{
-    const div=document.createElement('div');
-    div.innerHTML=`<label>${c.name}: <input type="number" min="0" max="10" value="${weights[c.id]}" onchange="updateWeight('${c.id}', this.value)"></label>`;
-    container.appendChild(div);
-  });
+  const list = document.getElementById('weights-list');
+  list.innerHTML = CRITERIA.map(c => {
+    const w = weights[c.id];
+    const optsInfo = c.options.map(o => `${o.label} = ${o.score} pts`).join(' · ');
+    return `
+      <div class="weight-item">
+        <div class="weight-item-header">
+          <span class="weight-name">${c.emoji} ${c.name}</span>
+          <span class="weight-value-badge" id="wval-${c.id}">×${w}</span>
+        </div>
+        <input
+          type="range" min="0" max="5" step="1" value="${w}"
+          class="weight-slider"
+          oninput="updateWeight('${c.id}', this.value)"
+        >
+        <div class="weight-options-info">Opções: ${optsInfo}</div>
+      </div>`;
+  }).join('');
 }
 
-function updateWeight(id,val) {
-  weights[id]=Number(val);
-  saveData();
-  renderMatrix();
+/* ─────────────────────────────────────────────
+   11. ACTUALIZAR PESO
+───────────────────────────────────────────── */
+function updateWeight(id, val) {
+  weights[id] = Number(val);
+  // Actualiza o badge sem re-render total dos pesos
+  const badge = document.getElementById('wval-' + id);
+  if (badge) badge.textContent = '×' + val;
+  saveAll();
+  renderMatrix(); // Re-calcula pontuações nos cards
 }
 
+/* ─────────────────────────────────────────────
+   12. RESET DE PESOS
+───────────────────────────────────────────── */
 function resetWeights() {
-  CRITERIA.forEach(c=>weights[c.id]=1);
-  saveData();
-  renderWeights();
-  renderMatrix();
+  CRITERIA.forEach(c => weights[c.id] = 2);
+  saveAll();
+  renderWeights(); // Re-render do painel de pesos
+  renderMatrix();  // Actualiza pontuações
 }
 
-// ---- INIT ----
-if(properties.length===0) addProp();
-renderMatrix();
-renderWeights();
+/* ─────────────────────────────────────────────
+   13. UTILITÁRIO: escapar HTML para segurança
+───────────────────────────────────────────── */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ─────────────────────────────────────────────
+   14. INICIALIZAÇÃO
+   Se não há imóveis guardados, cria 1 de raiz.
+───────────────────────────────────────────── */
+(function init() {
+  if (properties.length === 0) {
+    properties.push({ id: nextId++, name: '', selections: {} });
+    saveAll();
+  }
+  renderMatrix();
+  renderWeights();
+})();
 </script>
 
 </body>
