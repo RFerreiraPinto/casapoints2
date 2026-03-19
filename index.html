@@ -6,6 +6,8 @@
 <title>Matriz de Imóveis — Lisboa</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 :root {
   --bg:#f4f1ec; --surface:#fff; --border:#ddd8ce; --text:#1c1917; --muted:#78716c;
@@ -147,13 +149,51 @@ main{max-width:1200px;margin:0 auto;padding:26px 22px 70px}
   main{padding:16px 10px 50px}
   .matrix-toolbar,.chk-toolbar{flex-direction:column;align-items:flex-start}
 }
+
+/* MAPA MODAL */
+.map-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .18s ease}
+.map-modal{background:var(--surface);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:100%;max-width:780px;height:min(88vh,640px);display:flex;flex-direction:column;overflow:hidden;animation:slideUp .22s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.map-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.map-modal-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:10px}
+.map-modal-meta{font-size:.75rem;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400}
+.map-modal-close{background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--muted);padding:4px 6px;border-radius:6px;transition:color .12s,background .12s;line-height:1}
+.map-modal-close:hover{color:var(--text);background:#f3f0eb}
+.map-modal-controls{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.map-addr-input{flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--text);outline:none;transition:border-color .15s}
+.map-addr-input:focus{border-color:var(--gold)}
+.map-addr-input::placeholder{color:#bbb}
+.map-geocode-btn{padding:7px 14px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;flex-shrink:0}
+.map-geocode-btn:hover{background:var(--gold-dk)}.map-geocode-btn:disabled{opacity:.5;cursor:not-allowed}
+.map-status-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.map-status{font-size:.74rem;color:var(--muted);font-style:italic}
+.map-status.error{color:var(--red)}.map-status.success{color:var(--green);font-style:normal;font-weight:600}
+.map-metro-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:.72rem;font-weight:700}
+.map-metro-badge.good{background:var(--green-lt);color:var(--green)}
+.map-metro-badge.ok{background:#fef3c7;color:#92400e}
+.map-metro-badge.bad{background:var(--red-lt);color:var(--red)}
+#modal-map{flex:1;min-height:0;z-index:0}
+.map-modal-legend{display:flex;align-items:center;gap:14px;padding:7px 16px;border-top:1px solid var(--border);background:#fafaf8;font-size:.72rem;color:var(--muted);flex-shrink:0;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:5px}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+/* button inside card to open map */
+.btn-map{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;font-family:'DM Sans',sans-serif;font-size:.74rem;font-weight:600;background:var(--blue-lt);color:var(--blue);border:none;border-radius:99px;cursor:pointer;transition:all .13s}
+.btn-map:hover{background:var(--blue);color:#fff}
+.btn-map.located{background:var(--green-lt);color:var(--green)}
+.btn-map.located:hover{background:var(--green);color:#fff}
+/* metro distance shown on card */
+.card-metro-info{display:flex;align-items:center;gap:6px;font-size:.74rem}
+.card-metro-pill{padding:2px 8px;border-radius:99px;font-weight:700;font-size:.7rem}
+.card-metro-pill.good{background:var(--green-lt);color:var(--green)}
+.card-metro-pill.ok{background:#fef3c7;color:#92400e}
+.card-metro-pill.bad{background:var(--red-lt);color:var(--red)}
 </style>
 </head>
 <body>
 
 <header>
   <h1>Matriz de Imóveis</h1>
-  <span>Lisboa · A decision helper</span>
+  <span>Lisboa · Decisão de Compra</span>
 </header>
 
 <div class="tabs-bar" role="tablist">
@@ -187,6 +227,35 @@ main{max-width:1200px;margin:0 auto;padding:26px 22px 70px}
     <button class="btn-ghost" style="margin-top:14px" onclick="resetWeights()">↺ Repor Pesos Padrão</button>
   </div>
 </section>
+
+<!-- ═══ MAP MODAL (renderizado por JS) ═══ -->
+<div id="map-modal-overlay" class="map-modal-overlay" style="display:none" onclick="closeMapModal(event)">
+  <div class="map-modal">
+    <div class="map-modal-header">
+      <div class="map-modal-title">
+        <span id="modal-prop-dot" style="width:12px;height:12px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span>
+        <span id="modal-prop-name">—</span>
+        <span class="map-modal-meta" id="modal-prop-meta"></span>
+      </div>
+      <button class="map-modal-close" onclick="closeMapModal()">&times;</button>
+    </div>
+    <div class="map-modal-controls">
+      <input class="map-addr-input" id="modal-addr-input" type="text" placeholder="Morada completa, ex: Rua do Carmo 12, Lisboa">
+      <button class="map-geocode-btn" id="modal-geocode-btn" onclick="geocodeModal()">📍 Localizar</button>
+      <div class="map-status-bar">
+        <span class="map-status" id="modal-status"></span>
+        <span class="map-metro-badge" id="modal-metro-badge" style="display:none"></span>
+      </div>
+    </div>
+    <div id="modal-map"></div>
+    <div class="map-modal-legend">
+      <div class="leg-item"><span class="leg-dot" style="background:#e8253d"></span> Estação de Metro</div>
+      <div class="leg-item"><span class="leg-dot" style="background:var(--gold);opacity:.4;width:14px;height:14px;border:2px dashed var(--gold-dk);border-radius:50%"></span> 500 m</div>
+      <div class="leg-item"><span class="leg-dot" style="background:var(--blue);opacity:.3;width:18px;height:18px;border:2px dashed var(--blue);border-radius:50%"></span> 1 km</div>
+      <div style="margin-left:auto;font-size:.7rem">© <a href="https://www.openstreetmap.org/copyright" target="_blank" style="color:var(--gold)">OpenStreetMap</a></div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ ARU ═══ -->
 <section id="panel-aru" class="tab-panel">
@@ -559,6 +628,22 @@ function renderMatrix() {
     const aruStatus = aruData[prop.id]?.status||'unknown';
     const aruLabel  = {yes:'✓ ARU', no:'✗ Fora ARU', unknown:'? ARU'}[aruStatus];
     const aruClass  = aruStatus;
+    const geo = geoCache[prop.id];
+
+    // Metro distance pill
+    let metroPill = '';
+    if(geo?.metroDist != null) {
+      const d=geo.metroDist, cls=d<400?'good':d<800?'ok':'bad';
+      const mins=Math.max(1,Math.round(d/80));
+      metroPill=`<div class="card-metro-info">
+        <span class="card-metro-pill ${cls}">🚇 ~${mins} min</span>
+        <span style="font-size:.7rem;color:var(--muted)">${escHtml(geo.metroName||'')}</span>
+      </div>`;
+    }
+
+    // Map button — changes style if already geocoded
+    const mapBtnCls = geo?.lat ? 'btn-map located' : 'btn-map';
+    const mapBtnTxt = geo?.lat ? '📍 Ver no Mapa' : '🗺️ Localizar';
 
     const criteriaHtml = CRITERIA_GROUPS.map(grp => {
       const rows = grp.items.map(c => {
@@ -582,10 +667,14 @@ function renderMatrix() {
         <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${pct}%"></div></div>
         <div class="score-badge">${pct}%</div>
       </div>
+      ${metroPill}
       ${criteriaHtml}
       <div class="card-footer">
-        <button class="card-reset" onclick="resetProperty(${prop.id})">↺ Limpar selecções</button>
-        <span class="aru-pill ${aruClass}">${aruLabel}</span>
+        <button class="card-reset" onclick="resetProperty(${prop.id})">↺ Limpar</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="${mapBtnCls}" onclick="openMapModal(${prop.id})">${mapBtnTxt}</button>
+          <span class="aru-pill ${aruClass}">${aruLabel}</span>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -755,8 +844,298 @@ function resetAllChecklists() {
 }
 
 /* ════════════════════════════════════════════════
-   12. UTILS
+   MAP — Leaflet + Nominatim + Overpass
 ════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════
+   MAP MODAL — Leaflet + Nominatim + Overpass
+════════════════════════════════════════════════ */
+const PROP_COLORS = ['#b8975a','#4a7c59','#1e40af','#c0392b'];
+
+let modalMap       = null;   // Leaflet instance inside modal
+let modalMapReady  = false;
+let modalPropId    = null;   // which property the modal is showing
+let modalLayers    = {};     // {circle500, circle1000, propMarker, metroMarkers:[]}
+let metroStations  = [];
+let metroLoaded    = false;
+
+// Geocoords cache persisted to localStorage
+let geoCache = {};
+try { geoCache = JSON.parse(localStorage.getItem('im2_geo')||'{}'); } catch(e){ geoCache={}; }
+function saveGeo(){ localStorage.setItem('im2_geo', JSON.stringify(geoCache)); }
+
+// ── Open modal for a specific property ────────
+function openMapModal(propId) {
+  modalPropId = propId;
+  const prop  = properties.find(p=>p.id===propId);
+  const geo   = geoCache[propId];
+  const name  = prop?.name || `Imóvel ${propId}`;
+  const colorIdx = properties.findIndex(p=>p.id===propId);
+  const color = PROP_COLORS[colorIdx]||'#b8975a';
+
+  // Set header
+  document.getElementById('modal-prop-dot').style.background = color;
+  document.getElementById('modal-prop-name').textContent = name;
+  document.getElementById('modal-prop-meta').textContent = geo ? `· ${geo.address}` : '';
+
+  // Pre-fill address input
+  const addrInput = document.getElementById('modal-addr-input');
+  addrInput.value = geo?.address || aruData[propId]?.morada || '';
+
+  // Reset status
+  const statusEl = document.getElementById('modal-status');
+  const badgeEl  = document.getElementById('modal-metro-badge');
+  statusEl.textContent = '';
+  statusEl.className   = 'map-status';
+  badgeEl.style.display= 'none';
+
+  // Show modal
+  const overlay = document.getElementById('map-modal-overlay');
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  // Init Leaflet once (reuse instance — just clear layers & resize)
+  if(!modalMapReady) {
+    modalMap = L.map('modal-map', {zoomControl:true}).setView([38.716,-9.142],14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom:19
+    }).addTo(modalMap);
+    modalMapReady = true;
+    loadMetroStations(); // async: loads metro pins
+  }
+
+  // Refresh map size after display:flex renders
+  setTimeout(()=>{ modalMap.invalidateSize(); }, 80);
+
+  // If property already geocoded, show it immediately
+  if(geo?.lat) {
+    renderPropModal(propId, false);
+    showMetroBadge(propId);
+  } else {
+    // Reset to Lisboa centre
+    modalMap.setView([38.716,-9.142],13);
+  }
+}
+
+// ── Close modal ────────────────────────────────
+function closeMapModal(event) {
+  // Close only if clicking overlay (not the modal itself) or explicit call
+  if(event && event.target !== document.getElementById('map-modal-overlay')) return;
+  document.getElementById('map-modal-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+// Close on Escape
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeMapModal(); });
+
+// ── Geocode the address in the modal ──────────
+async function geocodeModal() {
+  if(!modalPropId) return;
+  const addr = document.getElementById('modal-addr-input').value.trim();
+  const btn  = document.getElementById('modal-geocode-btn');
+  const statusEl = document.getElementById('modal-status');
+
+  if(!addr){ setModalStatus('Insere uma morada.','error'); return; }
+
+  btn.disabled = true;
+  setModalStatus('A procurar…','');
+
+  try {
+    const q   = encodeURIComponent(addr + ', Lisboa, Portugal');
+    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=pt`;
+    const res = await fetch(url, { headers:{'Accept-Language':'pt','User-Agent':'MatrizImoveis/1.0'} });
+    const data= await res.json();
+
+    if(!data || data.length===0){
+      setModalStatus('Morada não encontrada. Tenta ser mais específico.','error');
+      btn.disabled=false; return;
+    }
+
+    const {lat,lon} = data[0];
+    geoCache[modalPropId] = { lat:parseFloat(lat), lng:parseFloat(lon), address:addr };
+    saveGeo();
+
+    // Sync address to ARU tab
+    if(!aruData[modalPropId]) aruData[modalPropId]={status:'unknown',morada:'',benefits:{},note:''};
+    aruData[modalPropId].morada = addr;
+    saveState();
+
+    setModalStatus('✓ Localizado','success');
+    renderPropModal(modalPropId, true);
+
+    // Update matrix card metro info + score after metro calc
+    if(metroLoaded) { calcNearestMetro(modalPropId); }
+
+  } catch(e) {
+    setModalStatus('Erro de ligação. Tenta novamente.','error');
+  }
+  btn.disabled = false;
+}
+
+function setModalStatus(msg, cls) {
+  const el = document.getElementById('modal-status');
+  el.textContent = msg;
+  el.className = 'map-status' + (cls?' '+cls:'');
+}
+
+// ── Render property pin + circles on modal map ─
+function renderPropModal(propId, flyTo) {
+  const geo   = geoCache[propId];
+  if(!geo||!modalMap) return;
+  const colorIdx = properties.findIndex(p=>p.id===propId);
+  const color = PROP_COLORS[colorIdx]||'#b8975a';
+  const name  = properties.find(p=>p.id===propId)?.name||`Imóvel ${propId}`;
+
+  // Clear previous prop layers (not metro markers)
+  if(modalLayers.propMarker) modalMap.removeLayer(modalLayers.propMarker);
+  if(modalLayers.circle500)  modalMap.removeLayer(modalLayers.circle500);
+  if(modalLayers.circle1000) modalMap.removeLayer(modalLayers.circle1000);
+
+  // Property pin — teardrop style
+  const icon = L.divIcon({
+    html:`<div style="width:26px;height:26px;background:${color};border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.4)"><div style="width:8px;height:8px;background:#fff;border-radius:50%;position:absolute;top:5px;left:5px"></div></div>`,
+    iconSize:[26,26], iconAnchor:[13,26], popupAnchor:[0,-26], className:''
+  });
+
+  const marker = L.marker([geo.lat,geo.lng],{icon})
+    .addTo(modalMap)
+    .bindPopup(`<strong style="font-family:'Playfair Display',serif;font-size:.92rem">${escHtml(name)}</strong><br><span style="font-size:.76rem;color:#666">${escHtml(geo.address||'')}</span>`, {maxWidth:220})
+    .openPopup();
+
+  // 500 m ring — gold
+  const c500 = L.circle([geo.lat,geo.lng],{
+    radius:500, color:color, fillColor:color,
+    fillOpacity:.06, weight:2, dashArray:'7 5'
+  }).addTo(modalMap)
+    .bindTooltip('500 m',{permanent:false,direction:'right'});
+
+  // 1 km ring — blue tint
+  const c1000 = L.circle([geo.lat,geo.lng],{
+    radius:1000, color:'#1e40af', fillColor:'#1e40af',
+    fillOpacity:.03, weight:1.5, dashArray:'10 7'
+  }).addTo(modalMap)
+    .bindTooltip('1 km',{permanent:false,direction:'right'});
+
+  modalLayers.propMarker = marker;
+  modalLayers.circle500  = c500;
+  modalLayers.circle1000 = c1000;
+
+  if(flyTo) modalMap.flyTo([geo.lat,geo.lng],15,{duration:1.1});
+  else      modalMap.setView([geo.lat,geo.lng],15);
+}
+
+// ── Load metro stations (Overpass, fallback hardcoded) ──
+async function loadMetroStations() {
+  try {
+    const query=`[out:json][timeout:15];node["station"="subway"](38.65,-9.25,38.80,-9.08);out body;`;
+    const res = await fetch('https://overpass-api.de/api/interpreter',{
+      method:'POST', body:'data='+encodeURIComponent(query)
+    });
+    const data = await res.json();
+    if(data.elements?.length>0){
+      metroStations = data.elements.map(e=>({
+        id:e.id, lat:e.lat, lng:e.lon,
+        name:e.tags?.name||e.tags?.['name:pt']||'Metro'
+      }));
+    } else { throw new Error('no data'); }
+  } catch(e) {
+    // Hardcoded fallback — todas as estações do Metro de Lisboa
+    metroStations = [
+      {name:'Aeroporto',lat:38.7701,lng:-9.1282},{name:'Encarnação',lat:38.7668,lng:-9.1279},
+      {name:'Odivelas',lat:38.7893,lng:-9.1789},{name:'Senhor Roubado',lat:38.7773,lng:-9.1719},
+      {name:'Alfornelos',lat:38.7659,lng:-9.1836},{name:'Pontinha',lat:38.7614,lng:-9.1874},
+      {name:'Carnide',lat:38.7563,lng:-9.1879},{name:'Colégio Militar',lat:38.7475,lng:-9.1881},
+      {name:'Alto dos Moinhos',lat:38.7414,lng:-9.1837},{name:'Laranjeiras',lat:38.7358,lng:-9.1804},
+      {name:'Jardim Zoológico',lat:38.7344,lng:-9.1756},{name:'Praça de Espanha',lat:38.7352,lng:-9.1616},
+      {name:'São Sebastião',lat:38.7295,lng:-9.1521},{name:'Parque',lat:38.7261,lng:-9.1552},
+      {name:'Marquês de Pombal',lat:38.7254,lng:-9.1498},{name:'Avenida',lat:38.7223,lng:-9.1464},
+      {name:'Restauradores',lat:38.7177,lng:-9.1414},{name:'Rossio',lat:38.7151,lng:-9.1398},
+      {name:'Baixa-Chiado',lat:38.7108,lng:-9.1406},{name:'Terreiro do Paço',lat:38.7076,lng:-9.1368},
+      {name:'Santa Apolónia',lat:38.7134,lng:-9.1237},{name:'Intendente',lat:38.7213,lng:-9.1337},
+      {name:'Anjos',lat:38.7248,lng:-9.1320},{name:'Arroios',lat:38.7262,lng:-9.1361},
+      {name:'Picoas',lat:38.7283,lng:-9.1486},{name:'Saldanha',lat:38.7325,lng:-9.1437},
+      {name:'Campo Pequeno',lat:38.7375,lng:-9.1451},{name:'Entre Campos',lat:38.7415,lng:-9.1518},
+      {name:'Cidade Universitária',lat:38.7460,lng:-9.1545},{name:'Quinta das Conchas',lat:38.7611,lng:-9.1458},
+      {name:'Oriente',lat:38.7676,lng:-9.0990},{name:'Olivais',lat:38.7609,lng:-9.1050},
+      {name:'Chelas',lat:38.7524,lng:-9.1166},{name:'Bela Vista',lat:38.7439,lng:-9.1195},
+      {name:'Olaias',lat:38.7384,lng:-9.1200},{name:'Roma',lat:38.7348,lng:-9.1325},
+      {name:'Areeiro',lat:38.7316,lng:-9.1290},{name:'Alameda',lat:38.7270,lng:-9.1299},
+      {name:'Rato',lat:38.7201,lng:-9.1552},{name:'Estrela',lat:38.7141,lng:-9.1591},
+      {name:'Santos',lat:38.7080,lng:-9.1531},{name:'Cais do Sodré',lat:38.7060,lng:-9.1470},
+      {name:'Infante Santo',lat:38.7061,lng:-9.1595},{name:'Alcântara-Mar',lat:38.6984,lng:-9.1777},
+      {name:'Entrecampos',lat:38.7421,lng:-9.1530},
+    ];
+  }
+  metroLoaded = true;
+
+  // Add metro pins to modal map
+  const metroIcon = L.divIcon({
+    html:`<div style="width:13px;height:13px;background:#e8253d;border:2.5px solid #fff;border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,.4)"></div>`,
+    iconSize:[13,13], iconAnchor:[6,6], className:''
+  });
+  modalLayers.metroMarkers = [];
+  metroStations.forEach(s=>{
+    const m = L.marker([s.lat,s.lng],{icon:metroIcon})
+      .addTo(modalMap)
+      .bindTooltip(`🚇 ${s.name}`,{permanent:false,direction:'top',className:'metro-tip'});
+    modalLayers.metroMarkers.push(m);
+  });
+
+  // Recalc for any already-geocoded property open in modal
+  if(modalPropId && geoCache[modalPropId]?.lat) {
+    calcNearestMetro(modalPropId);
+  }
+  // Recalc for all geocoded properties (updates matrix scores)
+  Object.keys(geoCache).forEach(pid=>{
+    if(geoCache[pid]?.lat) calcNearestMetro(Number(pid));
+  });
+}
+
+// ── Haversine distance (metres) ────────────────
+function haversine(a,b,c,d){
+  const R=6371000,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+// ── Find nearest metro & update matrix score ──
+function calcNearestMetro(propId) {
+  const geo=geoCache[propId];
+  if(!geo||!metroStations.length) return;
+  let nearest=null,minD=Infinity;
+  metroStations.forEach(s=>{
+    const d=haversine(geo.lat,geo.lng,s.lat,s.lng);
+    if(d<minD){minD=d;nearest=s;}
+  });
+  if(!nearest) return;
+
+  geoCache[propId].metroDist = minD;
+  geoCache[propId].metroName = nearest.name;
+  saveGeo();
+
+  // Auto-update the "metro" criterion in Matriz
+  const idx = minD<400?3 : minD<750?2 : minD<1200?1 : 0;
+  selectOption(propId,'metro',idx);
+
+  // Update badge in modal if this property is open
+  if(modalPropId===propId) showMetroBadge(propId);
+
+  // Re-render matrix cards to show metro pill
+  renderMatrix();
+}
+
+function showMetroBadge(propId) {
+  const geo=geoCache[propId];
+  if(!geo?.metroDist) return;
+  const d=geo.metroDist;
+  const cls=d<400?'good':d<800?'ok':'bad';
+  const mins=Math.max(1,Math.round(d/80));
+  const badge=document.getElementById('modal-metro-badge');
+  badge.textContent=`🚇 ${geo.metroName} — ~${mins} min a pé (${Math.round(d)} m)`;
+  badge.className=`map-metro-badge ${cls}`;
+  badge.style.display='inline-flex';
+}
+
 function escHtml(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -773,3 +1152,383 @@ function escHtml(str) {
 </script>
 </body>
 </html>
+
+// Guarda estado do mapa
+let mapInstance = null;          // instância Leaflet
+let mapInitialized = false;
+let mapLayers = {};              // {propId: {marker, circle, line, metroMarkers[]}}
+let metroStations = [];          // cache das estações carregadas via Overpass
+let metroLoaded = false;
+// Geocoords por imóvel: {propId: {lat,lng,metroName,metroDist}}
+let geoCache = {};
+try { geoCache = JSON.parse(localStorage.getItem('im2_geo')||'{}'); } catch(e){ geoCache={}; }
+
+function saveGeo(){ localStorage.setItem('im2_geo', JSON.stringify(geoCache)); }
+
+// ── Inicialização da tab Mapa ──────────────────
+function initMapTab() {
+  renderMapSidebar();
+
+  if(!mapInitialized) {
+    // Centro em Lisboa
+    mapInstance = L.map('map', {zoomControl:true}).setView([38.716, -9.142], 13);
+
+    // Tiles OpenStreetMap (gratuito, sem API key)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(mapInstance);
+
+    mapInitialized = true;
+
+    // Carrega estações de metro de Lisboa via Overpass API
+    loadMetroStations();
+  } else {
+    // Já inicializado — apenas redimensiona (necessário quando tab estava escondida)
+    setTimeout(() => mapInstance.invalidateSize(), 50);
+  }
+
+  // Renderiza pins de imóveis que já têm coordenadas
+  Object.keys(geoCache).forEach(pid => {
+    const prop = properties.find(p=>p.id===Number(pid));
+    if(prop) renderPropOnMap(Number(pid));
+  });
+}
+
+// ── Renderiza sidebar com cards por imóvel ─────
+function renderMapSidebar() {
+  const sidebar = document.getElementById('mapa-sidebar');
+  if(!sidebar) return;
+
+  if(properties.length===0) {
+    sidebar.innerHTML=`<div class="empty-state" style="grid-column:unset"><div class="ei">🏠</div><p>Adiciona imóveis na tab Matriz primeiro.</p></div>`;
+    return;
+  }
+
+  // Legenda
+  sidebar.innerHTML = `
+    <div class="map-legend">
+      <div class="map-legend-title">Legenda</div>
+      <div class="map-legend-item"><span class="leg-dot" style="background:#e8253d"></span> Estação de Metro</div>
+      <div class="map-legend-item"><span class="leg-line"></span> Distância ao metro mais próximo</div>
+      ${properties.map((p,i)=>`<div class="map-legend-item"><span class="leg-dot" style="background:${PROP_COLORS[i]}"></span> ${escHtml(p.name||`Imóvel ${p.id}`)}</div>`).join('')}
+    </div>
+    <button class="map-all-btn" onclick="fitAllProperties()">🔍 Ver todos os imóveis</button>
+    ${properties.map((p,i) => buildMapPropCard(p,i)).join('')}
+  `;
+}
+
+function buildMapPropCard(prop, colorIdx) {
+  const color = PROP_COLORS[colorIdx];
+  const geo = geoCache[prop.id];
+  const name = prop.name || `Imóvel ${prop.id}`;
+  const addrVal = geo?.address || aruData[prop.id]?.morada || '';
+
+  let metroHtml = '';
+  if(geo?.metroDist != null) {
+    const d = geo.metroDist;
+    const cls = d<400?'good':d<800?'ok':'bad';
+    const label = d<60?'<1 min a pé': d<400?`~${Math.round(d/80)} min a pé`:`~${Math.round(d/80)} min a pé`;
+    metroHtml = `<div class="map-metro-result">
+      <span class="map-metro-badge ${cls}">🚇 ${label}</span>
+      <div class="map-metro-name">Metro mais próximo: <strong>${geo.metroName||'—'}</strong> (${Math.round(d)} m)</div>
+    </div>`;
+  }
+
+  return `<div class="map-prop-card${geo?'':''}" id="mpc-${prop.id}" onclick="focusPropOnMap(${prop.id})">
+    <div class="map-prop-title">
+      <span class="map-prop-color" style="background:${color}"></span>
+      ${escHtml(name)}
+    </div>
+    <div class="map-search-row">
+      <input class="map-addr-input" id="mapaddr-${prop.id}" type="text"
+        value="${escHtml(addrVal)}"
+        placeholder="Morada completa, Lisboa…">
+      <button class="map-geocode-btn" id="mapbtn-${prop.id}"
+        onclick="event.stopPropagation();geocodeProp(${prop.id})">📍 Localizar</button>
+    </div>
+    <div class="map-status" id="mapstatus-${prop.id}">${geo?'<span class=ok>✓ Localizado</span>':''}</div>
+    ${metroHtml}
+  </div>`;
+}
+
+// ── Geocodificação via Nominatim ───────────────
+async function geocodeProp(propId) {
+  const input = document.getElementById(`mapaddr-${propId}`);
+  const btn   = document.getElementById(`mapbtn-${propId}`);
+  const status= document.getElementById(`mapstatus-${propId}`);
+  const addr  = input?.value?.trim();
+
+  if(!addr) { setStatus(propId,'Insere uma morada primeiro.','error'); return; }
+
+  btn.disabled = true;
+  setStatus(propId,'A procurar…','');
+
+  try {
+    // Nominatim geocoding — gratuito, sem API key, necessita user-agent
+    const q = encodeURIComponent(addr + ', Lisboa, Portugal');
+    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=pt`;
+    const res = await fetch(url, { headers:{'Accept-Language':'pt','User-Agent':'MatrizImoveis/1.0'} });
+    const data = await res.json();
+
+    if(!data || data.length===0) {
+      setStatus(propId,'Morada não encontrada. Tenta ser mais específico.','error');
+      btn.disabled=false; return;
+    }
+
+    const {lat,lon,display_name} = data[0];
+    const latlng = [parseFloat(lat), parseFloat(lon)];
+
+    // Guarda no cache
+    geoCache[propId] = { lat:latlng[0], lng:latlng[1], address: addr, display: display_name };
+    saveGeo();
+
+    // Actualiza também a morada na tab ARU
+    if(!aruData[propId]) aruData[propId]={status:'unknown',morada:'',benefits:{},note:''};
+    aruData[propId].morada = addr;
+    saveState();
+
+    setStatus(propId,'✓ Localizado','ok');
+    renderPropOnMap(propId);
+
+    // Calcula distância ao metro
+    if(metroLoaded && metroStations.length>0) {
+      calcNearestMetro(propId);
+    } else {
+      // Metro ainda a carregar — vai calcular quando carregar
+    }
+
+    // Centra mapa no imóvel
+    mapInstance.flyTo(latlng, 15, {duration:1.2});
+
+  } catch(e) {
+    setStatus(propId,'Erro na geocodificação. Verifica a ligação.','error');
+  }
+  btn.disabled = false;
+}
+
+function setStatus(propId, msg, cls) {
+  const el = document.getElementById(`mapstatus-${propId}`);
+  if(el) el.innerHTML = `<span class="${cls}">${msg}</span>`;
+}
+
+// ── Carrega estações de metro via Overpass ─────
+async function loadMetroStations() {
+  try {
+    // Overpass query: todos os nós com station=subway em Lisboa
+    const query = `[out:json][timeout:15];
+      node["station"="subway"](38.65,-9.25,38.80,-9.08);
+      out body;`;
+    const url = 'https://overpass-api.de/api/interpreter';
+    const res = await fetch(url, {
+      method:'POST',
+      body:'data='+encodeURIComponent(query)
+    });
+    const data = await res.json();
+
+    if(data.elements && data.elements.length>0) {
+      metroStations = data.elements.map(e=>({
+        id:e.id,
+        lat:e.lat,
+        lng:e.lon,
+        name: e.tags?.name || e.tags?.['name:pt'] || 'Metro'
+      }));
+      metroLoaded = true;
+
+      // Adiciona marcadores de metro ao mapa
+      const metroIcon = L.divIcon({
+        html:`<div style="
+          width:14px;height:14px;
+          background:#e8253d;border:2px solid #fff;
+          border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.4)
+        "></div>`,
+        iconSize:[14,14], iconAnchor:[7,7], className:''
+      });
+
+      metroStations.forEach(s => {
+        L.marker([s.lat,s.lng], {icon:metroIcon})
+          .addTo(mapInstance)
+          .bindTooltip(`🚇 ${s.name}`, {permanent:false, direction:'top', className:'metro-tip'});
+      });
+
+      // Calcula metro para imóveis já geocodificados
+      Object.keys(geoCache).forEach(pid => {
+        if(geoCache[pid]?.lat) calcNearestMetro(Number(pid));
+      });
+    }
+  } catch(e) {
+    console.warn('Overpass API error:', e);
+    // Fallback: usa estações hardcoded de Lisboa
+    loadMetroFallback();
+  }
+}
+
+// ── Fallback: estações de metro hardcoded ──────
+function loadMetroFallback() {
+  metroStations = [
+    {name:'Aeroporto',lat:38.7701,lng:-9.1282},{name:'Encarnação',lat:38.7668,lng:-9.1279},
+    {name:'Odivelas',lat:38.7893,lng:-9.1789},{name:'Senhor Roubado',lat:38.7773,lng:-9.1719},
+    {name:'Alfornelos',lat:38.7659,lng:-9.1836},{name:'Pontinha',lat:38.7614,lng:-9.1874},
+    {name:'Carnide',lat:38.7563,lng:-9.1879},{name:'Colégio Militar',lat:38.7475,lng:-9.1881},
+    {name:'Alto dos Moinhos',lat:38.7414,lng:-9.1837},{name:'Laranjeiras',lat:38.7358,lng:-9.1804},
+    {name:'Jardim Zoológico',lat:38.7344,lng:-9.1756},{name:'Praça de Espanha',lat:38.7352,lng:-9.1616},
+    {name:'São Sebastião',lat:38.7295,lng:-9.1521},{name:'Parque',lat:38.7261,lng:-9.1552},
+    {name:'Marquês de Pombal',lat:38.7254,lng:-9.1498},{name:'Avenida',lat:38.7223,lng:-9.1464},
+    {name:'Restauradores',lat:38.7177,lng:-9.1414},{name:'Rossio',lat:38.7151,lng:-9.1398},
+    {name:'Baixa-Chiado',lat:38.7108,lng:-9.1406},{name:'Terreiro do Paço',lat:38.7076,lng:-9.1368},
+    {name:'Santa Apolónia',lat:38.7134,lng:-9.1237},{name:'Intendente',lat:38.7213,lng:-9.1337},
+    {name:'Anjos',lat:38.7248,lng:-9.1320},{name:'Arroios',lat:38.7262,lng:-9.1361},
+    {name:'Picoas',lat:38.7283,lng:-9.1486},{name:'Saldanha',lat:38.7325,lng:-9.1437},
+    {name:'Campo Pequeno',lat:38.7375,lng:-9.1451},{name:'Entre Campos',lat:38.7415,lng:-9.1518},
+    {name:'Cidade Universitária',lat:38.7460,lng:-9.1545},{name:'Entrecampos',lat:38.7421,lng:-9.1530},
+    {name:'Quinta das Conchas',lat:38.7611,lng:-9.1458},{name:'Odivelas',lat:38.7893,lng:-9.1789},
+    {name:'Oriente',lat:38.7676,lng:-9.0990},{name:'Olivais',lat:38.7609,lng:-9.1050},
+    {name:'Chelas',lat:38.7524,lng:-9.1166},{name:'Bela Vista',lat:38.7439,lng:-9.1195},
+    {name:'Olaias',lat:38.7384,lng:-9.1200},{name:'Roma',lat:38.7348,lng:-9.1325},
+    {name:'Areeiro',lat:38.7316,lng:-9.1290},{name:'Alameda',lat:38.7270,lng:-9.1299},
+    {name:'Rato',lat:38.7201,lng:-9.1552},{name:'Estrela',lat:38.7141,lng:-9.1591},
+    {name:'Santos',lat:38.7080,lng:-9.1531},{name:'Cais do Sodré',lat:38.7060,lng:-9.1470},
+    {name:'Infante Santo',lat:38.7061,lng:-9.1595},{name:'Alcântara-Mar',lat:38.6984,lng:-9.1777},
+  ];
+  metroLoaded = true;
+
+  const metroIcon = L.divIcon({
+    html:`<div style="width:14px;height:14px;background:#e8253d;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
+    iconSize:[14,14],iconAnchor:[7,7],className:''
+  });
+  metroStations.forEach(s => {
+    L.marker([s.lat,s.lng],{icon:metroIcon})
+      .addTo(mapInstance)
+      .bindTooltip(`🚇 ${s.name}`,{permanent:false,direction:'top'});
+  });
+
+  Object.keys(geoCache).forEach(pid => {
+    if(geoCache[pid]?.lat) calcNearestMetro(Number(pid));
+  });
+}
+
+// ── Distância haversine (metros) ───────────────
+function haversine(lat1,lng1,lat2,lng2) {
+  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ── Calcula metro mais próximo e actualiza ─────
+function calcNearestMetro(propId) {
+  const geo = geoCache[propId];
+  if(!geo || !metroStations.length) return;
+
+  let nearest=null, minDist=Infinity;
+  metroStations.forEach(s => {
+    const d = haversine(geo.lat,geo.lng,s.lat,s.lng);
+    if(d<minDist){ minDist=d; nearest=s; }
+  });
+  if(!nearest) return;
+
+  geoCache[propId].metroDist = minDist;
+  geoCache[propId].metroName = nearest.name;
+  geoCache[propId].metroLat  = nearest.lat;
+  geoCache[propId].metroLng  = nearest.lng;
+  saveGeo();
+
+  // Actualiza o critério "metro" na Matriz automaticamente
+  const optIdx = minDist<400?3 : minDist<750?2 : minDist<1200?1 : 0;
+  selectOption(propId,'metro',optIdx);
+
+  // Desenha/actualiza linha no mapa
+  renderPropOnMap(propId);
+
+  // Actualiza sidebar sem re-render total
+  renderMapSidebar();
+}
+
+// ── Render de um imóvel no mapa ────────────────
+function renderPropOnMap(propId) {
+  const geo = geoCache[propId];
+  if(!geo || !mapInstance) return;
+
+  const colorIdx = properties.findIndex(p=>p.id===propId);
+  const color = PROP_COLORS[colorIdx] || '#b8975a';
+  const name  = properties.find(p=>p.id===propId)?.name || `Imóvel ${propId}`;
+
+  // Remove camadas anteriores deste imóvel
+  if(mapLayers[propId]) {
+    const {marker,circle,line} = mapLayers[propId];
+    if(marker) mapInstance.removeLayer(marker);
+    if(circle) mapInstance.removeLayer(circle);
+    if(line)   mapInstance.removeLayer(line);
+  }
+
+  // Ícone personalizado com cor do imóvel
+  const icon = L.divIcon({
+    html:`<div style="
+      width:22px;height:22px;
+      background:${color};border:3px solid #fff;
+      border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+      box-shadow:0 2px 8px rgba(0,0,0,.35);
+    "><div style="
+      width:8px;height:8px;background:#fff;border-radius:50%;
+      position:absolute;top:4px;left:4px;transform:none;
+    "></div></div>`,
+    iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-22], className:''
+  });
+
+  const marker = L.marker([geo.lat,geo.lng],{icon})
+    .addTo(mapInstance)
+    .bindPopup(`<strong style="font-family:'Playfair Display',serif">${name}</strong><br><span style="font-size:.8rem;color:#666">${geo.address||''}</span>${geo.metroName?`<br><span style="font-size:.8rem">🚇 ${geo.metroName} — ${Math.round(geo.metroDist)}m</span>`:''}`);
+
+  // Círculo de 1km
+  const circle = L.circle([geo.lat,geo.lng],{
+    radius:1000, color:color, fillColor:color,
+    fillOpacity:.05, weight:1.5, dashArray:'6 4'
+  }).addTo(mapInstance);
+
+  // Linha ao metro mais próximo
+  let line = null;
+  if(geo.metroLat) {
+    line = L.polyline([[geo.lat,geo.lng],[geo.metroLat,geo.metroLng]], {
+      color:color, weight:2.5, dashArray:'8 5', opacity:.8
+    }).addTo(mapInstance);
+  }
+
+  mapLayers[propId] = {marker,circle,line};
+}
+
+// ── Focar imóvel no mapa ao clicar no card ─────
+function focusPropOnMap(propId) {
+  const geo = geoCache[propId];
+  // Highlight card
+  document.querySelectorAll('.map-prop-card').forEach(c=>c.classList.remove('active'));
+  const card = document.getElementById(`mpc-${propId}`);
+  if(card) card.classList.add('active');
+
+  if(geo && mapInstance) {
+    mapInstance.flyTo([geo.lat,geo.lng],16,{duration:1});
+    mapLayers[propId]?.marker?.openPopup();
+  }
+}
+
+// ── Fit ao extent de todos os imóveis ─────────
+function fitAllProperties() {
+  const points = Object.values(geoCache).filter(g=>g.lat).map(g=>[g.lat,g.lng]);
+  if(points.length===0) return;
+  if(points.length===1) { mapInstance.flyTo(points[0],15); return; }
+  mapInstance.flyToBounds(L.latLngBounds(points).pad(.2),{duration:1.2});
+}
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ════════════════════════════════════════════════
+   13. INIT
+════════════════════════════════════════════════ */
+(function init(){
+  loadState();
+  if(properties.length===0){ properties.push({id:nextId++,name:'',selections:{}}); saveState(); }
+  renderMatrix();
+  renderWeights();
+})();
+</script>
+</body>
+</html> 
