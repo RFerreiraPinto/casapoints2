@@ -1,7 +1,3 @@
 [build]
 base = "."
 publish = "."
-git pull origin main
-git add netlify.toml
-git commit -m "Corrigir netlify.toml para deploy estático"
-git push origin main
